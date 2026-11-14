@@ -1,1 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AUDERE | NASA Mars Trek EVA Navigator</title>
+  <!-- Librería oficial de mapas interactivos Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    :root {
+      --bg-dark: #090d16;
+      --panel-bg: #111827;
+      --panel-border: #1f2937;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent-cyan: #06b6d4;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body { background: var(--bg-dark); color: var(--text-main); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
+    /* BARRA SUPERIOR */
+    header {
+      background: var(--panel-bg);
+      border-bottom: 1px solid var(--panel-border);
+      padding: 9px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      z-index: 1000;
+    }
+    .brand { display: flex; align-items: center; gap: 9px; }
+    .brand-badge { background: var(--accent-cyan); color: #000; font-weight: 800; padding: 3px 8px; border-radius: 4px; font-size: 0.82rem; letter-spacing: 1px; }
+    .brand h1 { font-size: 1rem; font-weight: 600; }
+    .csv-pill { font-size: 0.72rem; padding: 2px 7px; border-radius: 10px; background: #1f2937; color: var(--accent-green); border: 1px solid #374151; }
+
+    .controls { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+    select, button, label.upload-btn {
+      background: #1f2937; color: var(--text-main); border: 1px solid #374151;
+      padding: 6px 10px; border-radius: 6px; font-size: 0.8rem; cursor: pointer; transition: 0.2s;
+    }
+    select:hover, button:hover, label.upload-btn:hover { border-color: var(--accent-cyan); }
+    .btn-primary { background: #0284c7; border-color: #0369a1; font-weight: 600; }
+    .btn-primary:hover { background: #0369a1; }
+    .btn-storm { background: #991b1b; border-color: #ef4444; font-weight: 700; color: #fff; }
+    .btn-storm.active { background: #ef4444; box-shadow: 0 0 12px rgba(239, 68, 68, 0.65); }
+
+    /* LAYOUT PRINCIPAL */
+    main { display: grid; grid-template-columns: 1fr 410px; flex: 1; overflow: hidden; }
+    @media (max-width: 960px) { main { grid-template-columns: 1fr; overflow-y: auto; } #map { min-height: 420px; } }
+
+    .map-wrap { position: relative; width: 100%; height: 100%; background: #140a07; }
+    #map { width: 100%; height: 100%; background: #1c0e0a; }
+
+    /* FILTRO ÓPTICO BEER-LAMBERT POR TORMENTA DE POLVO */
+    #dustOverlay {
+      pointer-events: none;
+      position: absolute;
+      inset: 0;
+      z-index: 500;
+      background: radial-gradient(circle at center, rgba(180, 83, 9, 0.15), rgba(124, 45, 18, 0.68));
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+
+    /* FLOTANTE SUPERIOR DERECHO EN MAPA */
+    .map-hud {
+      position: absolute; top: 12px; right: 12px; z-index: 600;
+      background: rgba(17, 24, 39, 0.92); backdrop-filter: blur(6px);
+      border: 1px solid #374151; border-radius: 8px; padding: 10px 12px;
+      font-size: 0.76rem; max-width: 245px;
+    }
+    .map-hud h3 { font-size: 0.72rem; text-transform: uppercase; color: var(--accent-cyan); margin-bottom: 5px; letter-spacing: 0.6px; }
+    .map-hud p { color: #d1d5db; line-height: 1.35; margin-bottom: 6px; }
+    .legend-row { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+    /* PANEL LATERAL DERECHO */
+    aside {
+      background: var(--panel-bg); border-left: 1px solid var(--panel-border);
+      padding: 13px; overflow-y: auto; display: flex; flex-direction: column; gap: 11px;
+    }
+    .card { background: #161f32; border: 1px solid #263147; border-radius: 8px; padding: 11px; }
+    .card h2 { font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.8px; color: var(--accent-cyan); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+
+    .copilot-alert {
+      padding: 9px; border-radius: 6px; font-size: 0.79rem; line-height: 1.4;
+      border-left: 4px solid var(--accent-green); background: rgba(16, 185, 129, 0.12);
+    }
+    .copilot-alert.warn { border-left-color: var(--accent-amber); background: rgba(245, 158, 11, 0.15); }
+    .copilot-alert.danger { border-left-color: var(--accent-red); background: rgba(239, 68, 68, 0.2); }
+
+    /* TABLA COMPARATIVA DE INGENIERÍA */
+    .route-compare { width: 100%; border-collapse: collapse; font-size: 0.77rem; text-align: left; }
+    .route-compare th { color: var(--text-muted); font-weight: 600; padding-bottom: 5px; border-bottom: 1px solid #263147; }
+    .route-compare td { padding: 5px 2px; border-bottom: 1px solid #1f2937; }
+    .num-good { color: var(--accent-green); font-weight: 700; }
+    .num-bad { color: var(--accent-red); font-weight: 700; }
+
+    /* TELEMETRÍA */
+    .telemetry-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .metric { background: #0f1624; padding: 7px 9px; border-radius: 6px; border: 1px solid #1f2937; }
+    .metric span { display: block; font-size: 0.69rem; color: var(--text-muted); }
+    .metric strong { font-size: 0.88rem; color: #fff; }
+
+    .bar-wrap { margin-top: 8px; }
+    .bar-label { display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 3px; }
+    .bar-bg { width: 100%; height: 8px; background: #090d16; border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; transition: width 0.25s, background 0.25s; }
+
+    .mission-meta { font-size: 0.78rem; color: #d1d5db; line-height: 1.4; }
+    .mission-meta p { margin-bottom: 4px; }
+    .tag { display: inline-block; background: #1f2937; color: var(--accent-cyan); padding: 2px 6px; border-radius: 4px; font-size: 0.69rem; margin-top: 3px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="brand-badge">AUDERE</span>
+    <h1>NASA Mars Trek EVA Navigator</h1>
+    <span id="csvStatus" class="csv-pill">Cargando CSV...</span>
+  </div>
+
+  <div class="controls">
+    <select id="missionSelect" onchange="selectMission()" title="Sitio científico en Marte">
+      <option value="gale">1. Cráter Gale — Boxwork (Monte Sharp)</option>
+      <option value="jezero">2. Cráter Jezero — Delta Neretva</option>
+      <option value="pavonis">3. Pavonis Mons — Tubo de Lava</option>
+      <option value="arcadia">4. Arcadia Planitia — Hielo</option>
+    </select>
+
+    <select id="csvScenarioSelect" onchange="applyCsvScenario()" title="Escenario atmosférico del CSV NASA"></select>
+
+    <label class="upload-btn" title="Superpone una captura local de Mars Trek (Data/Opticos)">
+      📁 Capa Local
+      <input type="file" accept="image/*" style="display:none" onchange="overlayLocalImage(event)" />
+    </label>
+
+    <button class="btn-primary" onclick="toggleWalk()" id="walkBtn">▶ Caminar</button>
+    <button class="btn-storm" onclick="toggleStormQuick()" id="stormBtn">⚡ Tormenta (τ &gt; 2.5)</button>
+  </div>
+</header>
+
+<main>
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div id="dustOverlay"></div>
+
+    <div class="map-hud">
+      <h3>Control Cartográfico NASA</h3>
+      <p>Haz <strong>clic en cualquier punto del mapa</strong> para fijar un nuevo destino y medir metros reales ($R = 3,389.5\text{ km}$).</p>
+      <div class="legend-row"><span class="dot" style="background:#0284c7"></span> Hábitat Base (H)</div>
+      <div class="legend-row"><span class="dot" style="background:#10b981"></span> Objetivo Científico (OBJ)</div>
+      <div class="legend-row"><span class="dot" style="background:#8b5cf6"></span> Refugio Natural (REF)</div>
+      <div class="legend-row"><span style="color:#ef4444; font-weight:bold;">---</span> Ruta Directa (Riesgo pendiente/polvo)</div>
+      <div
