@@ -2,7 +2,7 @@
 
 Base de datos meteorológicos, composición atmosférica, vientos de montaña y dinámica de tormentas de polvo recopilados de misiones de superficie y orbitales de la NASA para el modelado de rutas seguras en caminatas espaciales (EVA).
 
-> **Nota de organización:** Para mediciones de radiación ionizante (GCR, tormentas solares SPE y límites biológicos), consultar la carpeta independiente [`/Data/Radiacion`](../Radiacion).
+
 
 ---
 
