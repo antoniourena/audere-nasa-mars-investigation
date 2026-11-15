@@ -154,9 +154,157 @@
 
     <div class="map-hud">
       <h3>Control Cartográfico NASA</h3>
-      <p>Haz <strong>clic en cualquier punto del mapa</strong> para fijar un nuevo destino y medir metros reales ($R = 3,389.5\text{ km}$).</p>
+      <p>Haz <strong>clic en cualquier punto del mapa</strong> para fijar un nuevo destino y medir metros reales (R = 3,389.5 km).</p>
       <div class="legend-row"><span class="dot" style="background:#0284c7"></span> Hábitat Base (H)</div>
       <div class="legend-row"><span class="dot" style="background:#10b981"></span> Objetivo Científico (OBJ)</div>
       <div class="legend-row"><span class="dot" style="background:#8b5cf6"></span> Refugio Natural (REF)</div>
       <div class="legend-row"><span style="color:#ef4444; font-weight:bold;">---</span> Ruta Directa (Riesgo pendiente/polvo)</div>
-      <div
+      <div class="legend-row"><span style="color:#10b981; font-weight:bold;">━━</span> Ruta Táctica Segura</div>
+    </div>
+  </div>
+
+  <aside>
+    <div class="card">
+      <h2>Copiloto Táctico <span id="alertBadge" style="color:#10b981">● NOMINAL</span></h2>
+      <div id="copilotMsg" class="copilot-alert">
+        Conectado a coordenadas oficiales de NASA Mars Trek. Ruta segura lista.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Cálculo Físico de Ruta (Ida)</h2>
+      <table class="route-compare">
+        <thead>
+          <tr>
+            <th>Variable Física</th>
+            <th>Línea Directa</th>
+            <th>Ruta Segura</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Distancia real (Marte)</td>
+            <td id="cmpDistDir">0 m</td>
+            <td id="cmpDistSafe" class="num-good">0 m</td>
+          </tr>
+          <tr>
+            <td>Tiempo (3.0 km/h)</td>
+            <td id="cmpTimeDir">0 min</td>
+            <td id="cmpTimeSafe">0 min</td>
+          </tr>
+          <tr>
+            <td>Consumo Oxígeno (O₂)</td>
+            <td id="cmpO2Dir" class="num-bad">0 g</td>
+            <td id="cmpO2Safe" class="num-good">0 g</td>
+          </tr>
+          <tr>
+            <td>Exposición Rad. (GCR)</td>
+            <td id="cmpRadDir">0.000 mSv</td>
+            <td id="cmpRadSafe">0.000 mSv</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>Telemetría Atmosférica y Soporte Vital</h2>
+      <div class="telemetry-grid">
+        <div class="metric"><span>Opacidad Polvo (τ)</span><strong id="valTau">0.55</strong></div>
+        <div class="metric"><span>Visibilidad Horiz.</span><strong id="valVis">18,000 m</strong></div>
+        <div class="metric"><span>Temp / Viento Ladera</span><strong id="valTemp">-8.0 °C | 11.0 m/s</strong></div>
+        <div class="metric"><span>Dosis Rad. Acumulada</span><strong id="valRadAccum">0.0000 mSv</strong></div>
+      </div>
+
+      <div class="bar-wrap">
+        <div class="bar-label"><span>Tanque Oxígeno (O₂ xEMU)</span><strong id="valO2">540.0 g / 540 g (100%)</strong></div>
+        <div class="bar-bg"><div id="barO2" class="bar-fill" style="width:100%; background:#10b981;"></div></div>
+      </div>
+
+      <div class="bar-wrap">
+        <div class="bar-label"><span>Batería Térmica Traje</span><strong id="valBat">1000 Wh / 1000 Wh (100%)</strong></div>
+        <div class="bar-bg"><div id="barBat" class="bar-fill" style="width:100%; background:#06b6d4;"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Ficha Científica del Sitio</h2>
+      <div class="mission-meta" id="missionInfo"></div>
+    </div>
+  </aside>
+</main>
+
+<script>
+  const MARS_RADIUS_M = 3389500.0;
+  const WALK_SPEED_MPM = 50.0;
+  const MAX_O2_GRAMS = 540.0;
+  const MAX_BAT_WH = 1000.0;
+
+  const MISSIONS = {
+    gale: {
+      name: "Cráter Gale — Formaciones Boxwork (Monte Sharp)",
+      coordsLabel: "5.40° S, 137.80° E | Elevación: -4.5 km",
+      objective: "Muestreo de venas minerales de sulfato en crestas Boxwork para rastrear agua subterránea.",
+      humanWhy: "Crestas escarpadas (>15°) inaccesibles para rovers; selección manual precisa.",
+      source: "MSL Curiosity REMS/RAD + MRO HiRISE",
+      radDaily: 0.64,
+      habitat: [-5.415, 137.785],
+      detour:  [-5.398, 137.792],
+      target:  [-5.392, 137.812],
+      shelter: [-5.408, 137.795],
+      stormZone: [-5.402, 137.802],
+      defaultCsvId: "GALE_NOMINAL",
+      stormCsvId: "GALE_TORMENTA_GLOBAL"
+    },
+    jezero: {
+      name: "Cráter Jezero — Delta de Arcillas (Neretva)",
+      coordsLabel: "18.38° N, 77.58° E | Elevación: -2.5 km",
+      objective: "Extracción de núcleos de arcilla esmectita con potencial de biofirmas preservadas.",
+      humanWhy: "Identificación visual inmediata de estratos y perforación rápida.",
+      source: "Mars 2020 Perseverance MEDA + Mastcam-Z",
+      radDaily: 0.65,
+      habitat: [18.372, 77.565],
+      detour:  [18.388, 77.572],
+      target:  [18.392, 77.595],
+      shelter: [18.376, 77.580],
+      stormZone: [18.382, 77.582],
+      defaultCsvId: "JEZERO_NOMINAL",
+      stormCsvId: "JEZERO_DUST_DEVIL"
+    },
+    pavonis: {
+      name: "Pavonis Mons — Claraboya de Tubo de Lava",
+      coordsLabel: "0.80° N, 113.00° W (-113.0° E) | Elevación: +8.5 km",
+      objective: "Inspección de cavidad volcánica subterránea como refugio natural contra radiación.",
+      humanWhy: "Descenso controlado en terreno volcánico irregular imposible para ruedas.",
+      source: "MRO HiRISE + Mars Odyssey THEMIS Thermal",
+      radDaily: 0.82,
+      habitat: [0.790, -113.015],
+      detour:  [0.808, -113.008],
+      target:  [0.812, -112.985],
+      shelter: [0.796, -112.998],
+      stormZone: [0.802, -113.000],
+      defaultCsvId: "PAVONIS_VIENTO_LADERA",
+      stormCsvId: "GALE_TORMENTA_REGIONAL"
+    },
+    arcadia: {
+      name: "Arcadia Planitia — Planicie de Hielo Subsuperficial",
+      coordsLabel: "39.20° N, 171.00° W (-171.0° E) | Elevación: -3.8 km",
+      objective: "Perforación somera (<1 m) para validar pureza de hielo de agua para soporte ISRU.",
+      humanWhy: "Operación rápida de taladro portátil y validación de muestras in situ.",
+      source: "MRO SHARAD/MCS + Phoenix Ref.",
+      radDaily: 0.62,
+      habitat: [39.188, -171.018],
+      detour:  [39.208, -171.010],
+      target:  [39.212, -170.985],
+      shelter: [39.194, -171.002],
+      stormZone: [39.200, -171.000],
+      defaultCsvId: "ARCADIA_NIEBLA_MATUTINA",
+      stormCsvId: "GALE_TORMENTA_REGIONAL"
+    }
+  };
+
+  const FALLBACK_CSV_TEXT = `escenario_id,mision_nasa,instrumento,ubicacion,elevacion_km,longitud_solar_ls,ventana_riesgo_lmst,temp_max_c,temp_min_c,presion_pa,opacidad_tau,visibilidad_m,viento_max_ms,viento_ladera_ms,riesgo_electrostatico,estado_alerta
+GALE_NOMINAL,MSL_Curiosity,REMS_Mastcam,Crater_Gale_Mount_Sharp,-4.5,75_Despejado,12:00-14:30,-8.0,-74.0,745,0.55,18000,8.5,11.0,BAJO,VERDE
+JEZERO_NOMINAL,Mars2020_Perseverance,MEDA,Crater_Jezero_Delta,-2.5,90_Despejado,11:30-15:00,-14.0,-79.0,715,0.48,20000,9.2,7.5,BAJO,VERDE
+ARCADIA_NIEBLA_MATUTINA,MRO_Phoenix_Ref,MCS_MARCI,Arcadia_Planitia_Hielo,-3.8,110_Despejado,04:30-07:00,-26.0,-92.0,820,0.42,1200,11.0,4.0,BAJO,AMARILLO
+PAVONIS_VIENTO_LADERA,MRO_Odyssey_Ref,MCS_THEMIS,Pavonis_Mons_Tharsis,+8.5,120_Despejado,16:00-19:30,-22.0,-88.0,240,0.25,25000,14.5,21.5,MODERADO,AMARILLO
+JEZERO_DUST_DEVIL,Mars2020_Perseverance,MEDA,Cr
