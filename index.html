@@ -67,45 +67,24 @@
             background: rgba(148, 163, 184, 0.25);
             border-radius: 1px;
         }
-        #viewport-3d, #viewport-2d {
+        #viewport-3d {
             position: fixed;
             inset: 0;
             z-index: 1;
-        }
-        #labels-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 5;
-            pointer-events: none;
-            overflow: hidden;
-        }
-        .iau-label {
-            position: absolute;
-            transform: translate(-50%, -50%);
-            font-family: 'Inter', sans-serif;
-            font-size: 10px;
-            font-weight: 500;
-            letter-spacing: 0.04em;
-            color: rgba(241, 245, 249, 0.86);
-            text-shadow: 0 1px 3px #000, 0 0 6px #000;
-            white-space: nowrap;
-            pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-    <!-- Viewports Sincronizados -->
+    <!-- Viewport Principal 3D (Three.js PBR) -->
     <div id="viewport-3d"></div>
-    <canvas id="viewport-2d" class="hidden cursor-crosshair"></canvas>
-    <div id="labels-overlay"></div>
 
     <!-- Pantalla de Inicialización -->
     <div id="loader-overlay" class="fixed inset-0 z-50 bg-[#030508] flex flex-col items-center justify-center transition-opacity duration-500">
         <div class="w-10 h-10 border-2 border-slate-700 border-t-sky-400 rounded-full animate-spin mb-4"></div>
         <div class="text-[11px] tracking-[0.25em] text-sky-400 font-mono-gis uppercase mb-1">NASA JPL // USGS ASTROGEOLOGY SCIENCE CENTER</div>
         <h1 class="text-lg font-semibold tracking-wider text-slate-100 uppercase">MARS TREK // TACTICAL SURFACE NAVIGATOR 4D</h1>
-        <p id="loader-status" class="text-xs text-slate-400 mt-2 font-mono-gis">Sintetizando MOLA DEM (-8,200 m a +21,229 m), Viking MDIM2.1 (2048×1024) y matriz radiológica 4D...</p>
+        <p id="loader-status" class="text-xs text-slate-400 mt-2 font-mono-gis">Sintetizando MOLA DEM (-8,200 m a +21,229 m), Viking MDIM2.1 (2048×1024) y mapas PBR...</p>
     </div>
 
     <!-- BARRA SUPERIOR DE TELEMETRÍA Y CONMUTACIÓN DE PROYECCIÓN -->
@@ -132,23 +111,23 @@
             <div class="grid grid-cols-2 sm:grid-cols-5 gap-x-3 gap-y-0.5 text-[10px] font-mono-gis">
                 <div>
                     <span class="text-slate-500 text-[8px] block uppercase">Lat / Lon (±180°)</span>
-                    <span id="hud-coords" class="text-slate-100">18.4400° N, 77.4400° E</span>
+                    <span id="hud-coords" class="text-slate-100">4.6500° S, 137.4200° E</span>
                 </div>
                 <div class="hidden lg:block">
                     <span class="text-slate-500 text-[8px] block uppercase">Lon Planetocéntrica</span>
-                    <span id="hud-lon360" class="text-slate-300">77.4400° E (0-360)</span>
+                    <span id="hud-lon360" class="text-slate-300">137.4200° E (0-360)</span>
                 </div>
                 <div>
                     <span class="text-slate-500 text-[8px] block uppercase">Elevación MOLA</span>
-                    <span id="hud-elev" class="text-sky-300">-2,570 m</span>
+                    <span id="hud-elev" class="text-sky-300">-4,501 m</span>
                 </div>
                 <div class="hidden sm:block">
                     <span class="text-slate-500 text-[9px] block uppercase">Pendiente / Temp TES</span>
-                    <span id="hud-slope-temp" class="text-slate-200">3.4° | 212 K (-61°C)</span>
+                    <span id="hud-slope-temp" class="text-slate-200">3.4° | 214 K (-59°C)</span>
                 </div>
                 <div class="hidden md:block">
                     <span class="text-slate-500 text-[9px] block uppercase">Rad 4D / Tau</span>
-                    <span id="hud-rad-tau" class="text-amber-300">0.93 mSv/d | τ 0.42</span>
+                    <span id="hud-rad-tau" class="text-amber-300">0.84 mSv/d | τ 0.45</span>
                 </div>
             </div>
         </div>
@@ -180,7 +159,7 @@
             </button>
 
             <!-- Curvas de Nivel (Contour Lines) -->
-            <button id="btn-contours" onclick="toggleContours()" class="hidden md:flex items-center gap-1.5 px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] text-slate-300 transition" title="Curvas de Nivel MOLA">
+            <button id="btn-contours" onclick="toggleContours()" class="hidden md:flex items-center gap-1.5 px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] text-slate-300 transition" title="Curvas de Nivel MOLA en Relieve Local 3D">
                 <span>Curvas</span>
             </button>
 
@@ -194,7 +173,7 @@
     </header>
 
     <!-- Lienzo Interactivo para Mapa Plano 2D Equirectangular (IAU EPSG:104905) -->
-    <div id="flat-map-container" class="fixed inset-0 z-10 hidden bg-[#04060a]">
+    <div id="flat-map-container" class="fixed inset-0 z-10 hidden bg-[#030508]">
         <canvas id="flat-map-canvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
         <div class="fixed bottom-12 left-1/2 -translate-x-1/2 gis-panel px-3 py-1 rounded text-[10px] font-mono-gis text-slate-300 pointer-events-none">
             PROYECCIÓN EQUIRECTANGULAR IAU EPSG:104905 (-180° a +180° LON / -90° a +90° LAT) • RUEDA: ZOOM • ARRASTRAR: PANEO
@@ -206,7 +185,7 @@
 
     <!-- PANEL IZQUIERDO: PLANIFICADOR DE RUTAS TÁCTICAS Y TELEMETRÍA 4D -->
     <aside id="left-panel" class="fixed top-14 bottom-11 left-2 w-[332px] max-w-[calc(100vw-16px)] z-20 flex flex-col gap-2 pointer-events-none transition-transform duration-300">
-        <!-- 1. Planificador de Ruta Superficial (Waze Marciano) -->
+        <!-- 1. Planificador de Ruta Superficial (A* Multi-Criterio) -->
         <div class="gis-panel rounded p-2.5 pointer-events-auto flex flex-col gap-2">
             <div class="flex items-center justify-between border-b border-slate-800 pb-1">
                 <div class="flex items-center gap-1.5">
@@ -221,7 +200,7 @@
                 <option value="curiosity_sharp">Ruta MSL: Bradbury Landing → Monte Sharp (Gale)</option>
                 <option value="perseverance_delta">Ruta Mars 2020: Butler Landing → Delta Jezero</option>
                 <option value="valles_traverse">Travesía Tectónica: Valles Marineris → Meridiani</option>
-                <option value="olympus_ascent">Ascenso Extremo: Amazonis → Olympus Mons</option>
+                <option value="olympus_ascent">Ascenso Extremo: Elysium → Olympus Mons</option>
                 <option value="custom">Ruta Personalizada (Waypoints A / B)</option>
             </select>
 
@@ -380,7 +359,7 @@
             <div class="gis-subcard rounded p-2 flex flex-col gap-1">
                 <div class="flex items-center justify-between text-[9px] font-mono-gis">
                     <span class="text-slate-400 uppercase">Estación Marciana (687 d):</span>
-                    <span id="weather-wind-badge" class="text-amber-300">Viento máx: 42 km/h</span>
+                    <span id="weather-wind-badge" class="text-amber-300">Viento máx: 97 km/h</span>
                 </div>
                 <select id="select-season" onchange="onSeasonChange(this.value)" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[10px] text-slate-200 focus:outline-none focus:border-sky-400">
                     <option value="n_spring">Primavera Hemisferio Norte (Actividad Polvo Menor)</option>
@@ -395,7 +374,7 @@
             <div>
                 <div class="flex justify-between text-[8px] font-mono-gis text-slate-400 mb-0.5">
                     <span id="legend-min">Basalto / Carbón</span>
-                    <span id="legend-mid" class="hidden">Terracota / Ocre</span>
+                    <span id="legend-mid">Terracota / Ocre</span>
                     <span id="legend-max">Escarcha / Polos</span>
                 </div>
                 <div id="legend-bar" class="h-1.5 w-full rounded-sm" style="background: linear-gradient(to right, #443e42 0%, #5c5250 22%, #a8684c 52%, #c07e5c 78%, #e8ecf0 100%);"></div>
@@ -433,7 +412,7 @@
         </div>
     </aside>
 
-    <!-- BARRA INFERIOR DE ACCESO RÁPIDO A SITIOS DE MISIÓN NASA (7) -->
+    <!-- BARRA INFERIOR DE ACCESO RÁPIDO A SITIOS DE MISIÓN NASA (8) -->
     <footer class="fixed bottom-2 left-2 right-2 z-20 flex items-center justify-between gap-2 pointer-events-none">
         <div class="gis-panel rounded px-2.5 py-1 flex items-center gap-1.5 overflow-x-auto max-w-full pointer-events-auto">
             <span class="text-[9px] font-mono-gis text-slate-400 shrink-0 uppercase pr-1">Misiones NASA:</span>
@@ -469,7 +448,7 @@
         /**
          * ============================================================================
          * MARS TREK GIS // NASA JPL & USGS ASTROGEOLOGY SURFACE NAVIGATOR 4D
-         * Calibración Estricta de Toponimia IAU (25) y Paletas Científicas PDS/USGS
+         * Calibración Geológica MOLA + Albedo Viking MDIM2.1 + Relieve 3D Fotorrealista
          * ============================================================================
          */
 
@@ -477,9 +456,11 @@
         const GLOBE_RADIUS = 100;
         const GRID_W = 512;
         const GRID_H = 256;
+        const TEX_W = 2048;
+        const TEX_H = 1024;
         const SOLAR_CONSTANT_MARS = 590.0; // W/m²
 
-        // ÚNICAMENTE las 25 regiones oficiales originales de la IAU
+        // ÚNICAMENTE las 25 regiones oficiales de la IAU solicitadas
         const IAU_REGIONS = [
             { name: 'Tantalus Fossae', lat: 40.0, lon: -100.0 },
             { name: 'Tempe Fossae', lat: 40.0, lon: -75.0 },
@@ -520,9 +501,7 @@
                 tempK: 214,
                 radMsv: 0.84,
                 tau: 0.45,
-                status: 'MSL CURIOSITY',
-                craterDiameterKm: 154,
-                desc: 'Sitio de aterrizaje del rover Curiosity en Aeolis Palus (Cráter Gale). Sustrato de conglomerados fluviales antiguos y lutitas lacustres con baja pendiente inicial (<4°) hacia la base del Monte Sharp.'
+                status: 'MSL CURIOSITY'
             },
             {
                 id: 'mount_sharp_sulfates',
@@ -534,9 +513,7 @@
                 tempK: 211,
                 radMsv: 0.86,
                 tau: 0.43,
-                status: 'RUTA ASCENSO MSL',
-                craterDiameterKm: 154,
-                desc: 'Estratos sedimentarios de transición arcilla-sulfato en las laderas de Aeolis Mons. Presenta escarpes escalonados, crestas de hematita (Vera Rubin Ridge) y pendientes de 12° a 22° que exigen navegación de precisión.'
+                status: 'RUTA ASCENSO MSL'
             },
             {
                 id: 'jezero_butler',
@@ -548,9 +525,7 @@
                 tempK: 212,
                 radMsv: 0.93,
                 tau: 0.41,
-                status: 'MARS 2020 ACTIVO',
-                craterDiameterKm: 45,
-                desc: 'Piso del cráter Jezero compuesto por unidades ígneas olivínicas y piroxénicas fracturadas (Séítah y Máaz). Punto de partida de la campaña de recolección de muestras de Perseverance.'
+                status: 'MARS 2020 ACTIVO'
             },
             {
                 id: 'jezero_delta',
@@ -562,9 +537,7 @@
                 tempK: 210,
                 radMsv: 0.94,
                 tau: 0.40,
-                status: 'OBJETIVO ASTROBIOLOGÍA',
-                craterDiameterKm: 45,
-                desc: 'Abanico deltaico de grano fino depositado hace ~3.7 mil millones de años en la desembocadura del valle Neretva Vallis. Frente escarpado de 40 m de altura con estratificación cruzada.'
+                status: 'OBJETIVO ASTROBIOLOGÍA'
             },
             {
                 id: 'valles_coprates',
@@ -576,9 +549,7 @@
                 tempK: 224,
                 radMsv: 0.72,
                 tau: 0.55,
-                status: 'CAÑÓN TECTÓNICO',
-                craterDiameterKm: 220,
-                desc: 'Fosa tectónica profunda en el sector central de Valles Marineris. La columna atmosférica adicional (~950 Pa) reduce la dosis de radiación cósmica galáctica respecto al datum medio.'
+                status: 'CAÑÓN TECTÓNICO'
             },
             {
                 id: 'olympus_mons',
@@ -590,9 +561,7 @@
                 tempK: 184,
                 radMsv: 2.12,
                 tau: 0.18,
-                status: 'VOLCÁN ESCUDO',
-                craterDiameterKm: 85,
-                desc: 'Edificio volcánico más alto del Sistema Solar (+21,229 m sobre datum MOLA). Rodeado por un escarpe basal de hasta 8 km de altura; atmósfera tenue (<70 Pa) y máxima exposición GCR.'
+                status: 'VOLCÁN ESCUDO'
             },
             {
                 id: 'insight_elysium',
@@ -604,9 +573,7 @@
                 tempK: 215,
                 radMsv: 0.93,
                 tau: 0.48,
-                status: 'ESTACIÓN GEOFÍSICA',
-                craterDiameterKm: 28,
-                desc: 'Llanura volcánica lisa con regolito arenoso y cráteres degradados de impacto menor (Homestead Hollow). Terreno óptimo de baja pendiente (<3°) para despliegue de infraestructura.'
+                status: 'ESTACIÓN GEOFÍSICA'
             },
             {
                 id: 'opportunity_endeavour',
@@ -618,9 +585,7 @@
                 tempK: 218,
                 radMsv: 0.99,
                 tau: 0.44,
-                status: 'MER-B OPPORTUNITY',
-                craterDiameterKm: 22,
-                desc: 'Borde occidental erosionado del cráter de impacto Endeavour (22 km de diámetro), con afloramientos de filosilicatos y sulfatos hidratados explorados durante 14 años.'
+                status: 'MER-B OPPORTUNITY'
             }
         ];
 
@@ -634,8 +599,8 @@
             showMinerals: true,
             origin: { lat: -4.5895, lon: 137.4417, name: 'Cráter Gale - Bradbury Landing (Curiosity)' },
             dest: { lat: -4.7200, lon: 137.4100, name: 'Monte Sharp / Aeolis Mons (Unidad de Sulfatos)' },
-            selectedSite: NASA_SITES[0],
             localDemCenter: { lat: -4.65, lon: 137.42, spanDeg: 1.8 },
+            localDemBounds: { minE: -5000, rangeE: 1500 },
             vehicle: 'rover',
             priority: 'safe',
             clickPinMode: false,
@@ -649,15 +614,7 @@
             isDraggingFlat: false,
             dragStartX: 0,
             dragStartY: 0,
-            flatView: {
-                zoom: 1.0,
-                panX: 0,
-                panY: 0,
-                isDragging: false,
-                dragStartX: 0,
-                dragStartY: 0,
-                moved: false
-            }
+            cameraFlyTarget: null
         };
 
         // Catálogo Verificado de 18 Depósitos Minerales NASA/USGS
@@ -685,21 +642,22 @@
         const NASA_MISSIONS = NASA_SITES;
         let missionsGroup3D, mineralsGroup3D;
 
-        // Matrices GIS Globales (512 x 256)
+        // Matrices GIS Globales de Navegación (512 x 256) y DEM de Alta Resolución (2048 x 1024)
         let elevationGrid = new Float32Array(GRID_W * GRID_H);
         let slopeGrid = new Float32Array(GRID_W * GRID_H);
         let tempGrid = new Float32Array(GRID_W * GRID_H);
         let radGrid = new Float32Array(GRID_W * GRID_H);
         let tauGrid = new Float32Array(GRID_W * GRID_H);
+        let hiResElevGrid = new Float32Array(TEX_W * TEX_H);
 
         // Objetos Three.js y Canvases 2D
-        let scene, camera, renderer, controls;
+        let scene, camera, renderer, controls, sunLight;
         let marsGlobeMesh, marsTerrainMesh, contourLinesGroup, atmosphereMesh;
-        let routeLine3D, routeMarkersGroup;
-        let markerA, markerB, siteMarkers = [];
+        let globeNormalTexture, globeRoughnessTexture;
+        let routeLine3D;
+        let markerA, markerB;
         let raycaster = new THREE.Raycaster();
         let mouse = new THREE.Vector2();
-        let clock = new THREE.Clock();
 
         const layerTextures = {};
         const layerCanvases = {};
@@ -741,31 +699,31 @@
 
         // Paleta Termográfica TES (180 K a 235 K)
         const TES_TEMP_STOPS = [
-            { pos: 0.00, rgb: [9, 4, 20] },        // 180 K: Negro / violeta muy oscuro
-            { pos: 0.18, rgb: [38, 28, 110] },     // 190 K: Índigo / azul oscuro
-            { pos: 0.36, rgb: [41, 128, 185] },    // 200 K: Azul cian
-            { pos: 0.55, rgb: [46, 204, 113] },    // 210 K: Verde agua / esmeralda
-            { pos: 0.73, rgb: [241, 196, 15] },    // 220 K: Amarillo verdoso / dorado
-            { pos: 0.91, rgb: [230, 126, 34] },    // 230 K: Naranja
-            { pos: 1.00, rgb: [192, 57, 43] }      // 235 K: Rojo
+            { pos: 0.00, rgb: [9, 4, 20] },        // 180 K
+            { pos: 0.18, rgb: [38, 28, 110] },     // 190 K
+            { pos: 0.36, rgb: [41, 128, 185] },    // 200 K
+            { pos: 0.55, rgb: [46, 204, 113] },    // 210 K
+            { pos: 0.73, rgb: [241, 196, 15] },    // 220 K
+            { pos: 0.91, rgb: [230, 126, 34] },    // 230 K
+            { pos: 1.00, rgb: [192, 57, 43] }      // 235 K
         ];
 
         // Paleta Optical Depth τ (0.0 a 3.8)
         const TAU_DUST_STOPS = [
-            { pos: 0.00, rgb: [5, 8, 20] },        // τ = 0.0: Negro / azul abisal
-            { pos: 0.26, rgb: [0, 119, 182] },     // τ = 1.0: Azul océano
-            { pos: 0.38, rgb: [0, 180, 216] },     // τ = 1.45: Azul cian
-            { pos: 0.53, rgb: [45, 198, 83] },     // τ = 2.0: Verde brillante
-            { pos: 0.79, rgb: [255, 214, 10] },    // τ = 3.0: Amarillo intenso
-            { pos: 1.00, rgb: [208, 0, 0] }        // τ = 3.8: Rojo tormenta
+            { pos: 0.00, rgb: [5, 8, 20] },        // τ = 0.0
+            { pos: 0.26, rgb: [0, 119, 182] },     // τ = 1.0
+            { pos: 0.38, rgb: [0, 180, 216] },     // τ = 1.45
+            { pos: 0.53, rgb: [45, 198, 83] },     // τ = 2.0
+            { pos: 0.79, rgb: [255, 214, 10] },    // τ = 3.0
+            { pos: 1.00, rgb: [208, 0, 0] }        // τ = 3.8
         ];
 
         // Paleta Radiación 4D (0.65 mSv/d a 2.12 mSv/d)
         const RAD_4D_STOPS = [
-            { pos: 0.00, rgb: [21, 128, 61] },     // 0.65 mSv/d: Verde seguro (#15803d)
-            { pos: 0.35, rgb: [234, 179, 8] },     // 1.16 mSv/d: Amarillo ámbar (#eab308)
-            { pos: 0.68, rgb: [249, 115, 22] },    // 1.65 mSv/d: Naranja (#f97316)
-            { pos: 1.00, rgb: [225, 29, 72] }      // 2.12 mSv/d: Rojo/magenta crítico (#e11d48)
+            { pos: 0.00, rgb: [21, 128, 61] },     // 0.65 mSv/d
+            { pos: 0.35, rgb: [234, 179, 8] },     // 1.16 mSv/d
+            { pos: 0.68, rgb: [249, 115, 22] },    // 1.65 mSv/d
+            { pos: 1.00, rgb: [225, 29, 72] }      // 2.12 mSv/d
         ];
 
         /**
@@ -821,20 +779,20 @@
         }
 
         function craterProfile(distNorm, hasCentralPeak = true) {
-            if (distNorm > 1.65) return 0;
-            if (distNorm <= 0.85) {
-                const r = distNorm / 0.85;
-                let cavity = -1.0 + Math.pow(r, 2.4);
-                if (hasCentralPeak && r < 0.25) {
-                    cavity += (1.0 - r / 0.25) * 0.42;
+            if (distNorm > 1.72) return 0;
+            if (distNorm <= 0.86) {
+                const r = distNorm / 0.86;
+                let cavity = -1.0 + Math.pow(r, 2.75);
+                if (hasCentralPeak && r < 0.24) {
+                    cavity += (1.0 - r / 0.24) * 0.44;
                 }
                 return cavity;
-            } else if (distNorm <= 1.05) {
-                const t = 1.0 - Math.abs(distNorm - 0.95) / 0.10;
-                return Math.max(0, t) * 0.36;
+            } else if (distNorm <= 1.04) {
+                const t = 1.0 - Math.abs(distNorm - 0.94) / 0.10;
+                return Math.max(0, t) * 0.40;
             } else {
-                const t = 1.0 - (distNorm - 1.05) / 0.60;
-                return Math.max(0, Math.pow(t, 1.8)) * 0.14;
+                const t = 1.0 - (distNorm - 1.04) / 0.68;
+                return Math.max(0, Math.pow(t, 2.0)) * 0.15;
             }
         }
 
@@ -847,117 +805,269 @@
             return Math.sqrt(dLat * dLat + (dLon * cosLat) * (dLon * cosLat));
         }
 
+        // Catálogo determinista de cráteres reales + población estadísticamente fiel al DEM MOLA
+        let GLOBAL_CRATERS = null;
+        function getGlobalCraters() {
+            if (GLOBAL_CRATERS) return GLOBAL_CRATERS;
+            const list = [
+                { lat: -4.65, lon: 137.42, radiusDeg: 2.35, depthM: 3800, peak: true },   // Gale
+                { lat: 18.41, lon: 77.50, radiusDeg: 1.45, depthM: 2100, peak: false },   // Jezero
+                { lat: -14.57, lon: 175.47, radiusDeg: 2.25, depthM: 2600, peak: false }, // Gusev
+                { lat: -2.28, lon: -5.23, radiusDeg: 1.25, depthM: 1450, peak: false },   // Endeavour
+                { lat: -13.8, lon: 103.5, radiusDeg: 4.1, depthM: 3600, peak: true },     // Huygens
+                { lat: 23.8, lon: 31.8, radiusDeg: 3.6, depthM: 3200, peak: true },       // Cassini
+                { lat: -2.7, lon: 16.8, radiusDeg: 3.9, depthM: 3400, peak: true },       // Schiaparelli
+                { lat: 21.5, lon: 60.8, radiusDeg: 3.4, depthM: 2900, peak: true },       // Antoniadi
+                { lat: -14.9, lon: 132.0, radiusDeg: 3.3, depthM: 2950, peak: true },     // Herschel
+                { lat: -40.8, lon: -158.1, radiusDeg: 3.5, depthM: 3100, peak: true },   // Newton
+                { lat: -49.2, lon: -169.2, radiusDeg: 3.8, depthM: 3300, peak: true },   // Copernicus
+                { lat: -47.1, lon: 140.9, radiusDeg: 3.1, depthM: 2800, peak: true },     // Kepler
+                { lat: -52.3, lon: -81.4, radiusDeg: 2.8, depthM: 2600, peak: true },     // Lowell
+                { lat: 36.8, lon: -19.2, radiusDeg: 2.6, depthM: 2400, peak: true },      // Lyot (Acidalia)
+                { lat: 32.5, lon: 112.0, radiusDeg: 2.1, depthM: 1950, peak: true },      // Mie (Utopia)
+                { lat: -24.5, lon: -26.5, radiusDeg: 3.2, depthM: 2850, peak: true },     // Holden / Ladon
+                { lat: -26.4, lon: -34.0, radiusDeg: 2.4, depthM: 2300, peak: true }       // Eberswalde
+            ];
+
+            for (let i = 0; i < 620; i++) {
+                const isHighland = i < 490;
+                const lat = isHighland
+                    ? -4 - hash2D(i, 1.13) * 72
+                    : (hash2D(i, 2.37) - 0.30) * 125;
+                const lon = (hash2D(i, 7.91) - 0.5) * 360;
+
+                if (angularDistDeg(lat, lon, -42.4, 70.5) < 17.5) continue;
+                if (angularDistDeg(lat, lon, 18.65, -133.8) < 6.5) continue;
+                if (Math.abs(lat) > 77) continue;
+
+                const rRand = hash2D(i, 4.19);
+                const radiusDeg = rRand < 0.08
+                    ? 2.4 + hash2D(i, 5.7) * 2.2
+                    : rRand < 0.32
+                        ? 1.15 + hash2D(i, 5.7) * 1.25
+                        : 0.45 + hash2D(i, 5.7) * 0.70;
+                const depthM = Math.min(3400, radiusDeg * 680 + hash2D(i, 9.31) * 480);
+                list.push({ lat, lon, radiusDeg, depthM, peak: radiusDeg > 1.75 });
+            }
+            GLOBAL_CRATERS = list;
+            return list;
+        }
+
+        // Evaluación continua de elevación geológica MOLA (m)
+        function evaluateGeologicalElevation(lat, lon, craters) {
+            const lonRad = (lon * Math.PI) / 180;
+            const latRad = (lat * Math.PI) / 180;
+            const nx = Math.cos(latRad) * Math.cos(lonRad) * 2.4 + 4.0;
+            const ny = Math.sin(latRad) * 2.4 + 4.0;
+            const nz = Math.cos(latRad) * Math.sin(lonRad) * 2.4 + 4.0;
+
+            // 1. Dicotomía cortical global (Bajas planicies del Norte vs Tierras altas del Sur)
+            const boundaryLat = 8.0
+                + 16.0 * Math.exp(-Math.pow(angularDistDeg(lat, lon, 22, 30) / 38, 2))
+                - 14.0 * Math.exp(-Math.pow(angularDistDeg(lat, lon, 24, -158) / 42, 2))
+                + (fbm(nx * 1.6, nz * 1.6, 4) - 0.5) * 14.0;
+
+            const dBoundary = lat - boundaryLat;
+            const dichotomy = dBoundary < 0
+                ? 2450 * Math.tanh(Math.abs(dBoundary) / 16.0)
+                : -3950 * Math.tanh(dBoundary / 14.0);
+
+            const scarpZone = Math.exp(-Math.pow(dBoundary / 6.5, 2));
+            const frettedDetail = scarpZone * (ridgedFbm(nx * 9.0, nz * 9.0, 4) - 0.45) * 1450;
+
+            const macroTerrain = (fbm(nx * 1.8, ny * 1.8 + nz * 0.9, 6) - 0.48) * 3600;
+            const ridges = (ridgedFbm(nx * 4.2, nz * 4.2 + ny * 2.1, 5) - 0.44) * 1150;
+            let elev = dichotomy + frettedDetail + macroTerrain + ridges;
+
+            // 2. Domo Volcánico de Tharsis y Alba Mons
+            const dTharsisBulge = angularDistDeg(lat, lon, 2.0, -108.0);
+            if (dTharsisBulge < 34.0) {
+                const tb = 1.0 - dTharsisBulge / 34.0;
+                elev += Math.pow(tb, 1.45) * 7600;
+            }
+
+            const dAlba = angularDistDeg(lat, lon, 40.5, -109.5);
+            if (dAlba < 11.5) {
+                const ta = 1.0 - dAlba / 11.5;
+                elev += Math.pow(ta, 1.5) * 7800;
+                if (dAlba < 1.3) elev -= (1.0 - dAlba / 1.3) * 650;
+            }
+
+            // 3. Olympus Mons (18.65° N, -133.8° W) + Escarpe Basal + Caldera + Aureola NO
+            const dOlympus = angularDistDeg(lat, lon, 18.65, -133.8);
+            if (dOlympus < 7.5) {
+                if (dOlympus < 4.6) {
+                    const scarp = dOlympus > 3.9 ? (4.6 - dOlympus) / 0.7 : 1.0;
+                    const shield = Math.pow(Math.max(0, 1.0 - dOlympus / 4.4), 1.15);
+                    elev += scarp * 6200 + shield * 16500;
+                } else {
+                    const apron = 1.0 - (dOlympus - 4.6) / 2.9;
+                    elev += Math.pow(apron, 1.8) * 2600;
+                }
+                if (dOlympus < 0.85) {
+                    elev -= (1.0 - Math.pow(dOlympus / 0.85, 2.0)) * 3200;
+                }
+            }
+            const dAureole = angularDistDeg(lat, lon, 24.5, -138.5);
+            if (dAureole < 6.8) {
+                const aurEnv = Math.pow(1.0 - dAureole / 6.8, 1.4);
+                elev += aurEnv * (1800 + ridgedFbm(nx * 14.0, ny * 14.0, 4) * 1400);
+            }
+
+            // 4. Montes Tharsis y Elysium
+            const volcanoes = [
+                { lat: 11.9, lon: -104.5, h: 12200, r: 4.4, calR: 0.65, calD: 2600 }, // Ascraeus Mons
+                { lat: 0.8, lon: -113.4, h: 9800, r: 4.2, calR: 0.62, calD: 2400 },   // Pavonis Mons
+                { lat: -8.4, lon: -120.1, h: 11800, r: 4.8, calR: 0.85, calD: 2800 }, // Arsia Mons
+                { lat: 25.0, lon: 147.0, h: 15800, r: 6.2, calR: 0.55, calD: 2100 },  // Elysium Mons
+                { lat: 32.1, lon: 150.2, h: 6800, r: 2.6, calR: 0.35, calD: 1100 },   // Hecates Tholus
+                { lat: 18.9, lon: 150.5, h: 5600, r: 2.4, calR: 0.32, calD: 950 },    // Albor Tholus
+                { lat: 24.8, lon: -97.2, h: 6200, r: 2.5, calR: 0.35, calD: 1100 },   // Ceraunius/Uranius
+                { lat: 13.5, lon: -90.8, h: 5800, r: 2.2, calR: 0.30, calD: 1000 }    // Tharsis Tholus
+            ];
+            for (let v = 0; v < volcanoes.length; v++) {
+                const vol = volcanoes[v];
+                const dv = angularDistDeg(lat, lon, vol.lat, vol.lon);
+                if (dv < vol.r) {
+                    elev += Math.pow(1.0 - dv / vol.r, 1.65) * vol.h;
+                    if (dv < vol.calR) {
+                        elev -= (1.0 - Math.pow(dv / vol.calR, 2.0)) * vol.calD;
+                    }
+                }
+            }
+
+            // 5. Valles Marineris, Noctis Labyrinthus y Canales de Desagüe Circum-Chryse
+            if (lat > -19.0 && lat < -5.5 && lon > -98.0 && lon < -34.0) {
+                if (lon < -90.0) {
+                    const dNoctis = angularDistDeg(lat, lon, -7.5, -95.0);
+                    if (dNoctis < 4.8) {
+                        const web = ridgedFbm(nx * 18.0, ny * 18.0, 4);
+                        if (web > 0.52) {
+                            elev -= (web - 0.52) * 14000 * (1.0 - dNoctis / 4.8);
+                        }
+                    }
+                }
+                const centerLat = -13.5 - (lon + 62.0) * 0.085;
+                const dCanyon = Math.abs(lat - centerLat);
+                if (dCanyon < 3.1 && lon >= -92.0) {
+                    const lonEnv = Math.sin(((lon + 92.0) / 58.0) * Math.PI);
+                    const wallDetail = 0.85 + 0.35 * ridgedFbm(nx * 16.0, nz * 16.0, 4);
+                    const dNorthChasma = Math.abs(lat - (centerLat + 1.45));
+                    const northTrough = (lon > -78 && lon < -66 && dNorthChasma < 0.95)
+                        ? (1.0 - Math.pow(dNorthChasma / 0.95, 1.5)) * 6200
+                        : 0;
+                    const mainTrough = (1.0 - Math.pow(dCanyon / 3.1, 1.45)) * 8600 * lonEnv * wallDetail;
+                    elev -= Math.max(mainTrough, northTrough);
+                }
+            }
+
+            // Canales de desagüe hacia Chryse / Acidalia (Kasei, Simud, Tiu, Ares Valles)
+            if (lat > -12.0 && lat < 26.0 && lon > -78.0 && lon < -18.0) {
+                const dKasei = Math.abs(lat - (21.5 - (lon + 65.0) * 0.12));
+                if (lon > -76.0 && lon < -52.0 && dKasei < 1.8) {
+                    elev -= (1.0 - dKasei / 1.8) * 2600 * Math.sin(((lon + 76.0) / 24.0) * Math.PI);
+                }
+                const channelLon = -36.0 + (lat + 10.0) * 0.18 + Math.sin(lat * 0.35) * 2.2;
+                const dOutflow = Math.abs(lon - channelLon);
+                if (dOutflow < 2.8) {
+                    const braid = 0.65 + 0.5 * ridgedFbm(nx * 14.0, ny * 14.0, 3);
+                    elev -= (1.0 - dOutflow / 2.8) * 2400 * braid;
+                }
+            }
+
+            // 6. Cuencas de Impacto Mayores (Hellas, Argyre, Isidis)
+            const dHellas = angularDistDeg(lat, lon, -42.4, 70.5);
+            if (dHellas < 24.0) {
+                if (dHellas < 16.5) {
+                    elev -= Math.pow(1.0 - Math.pow(dHellas / 16.5, 2.2), 1.1) * 9600;
+                } else {
+                    const rimT = 1.0 - Math.abs(dHellas - 19.0) / 4.5;
+                    elev += Math.max(0, rimT) * 1450;
+                }
+            }
+
+            const dArgyre = angularDistDeg(lat, lon, -49.7, -44.0);
+            if (dArgyre < 13.5) {
+                if (dArgyre < 9.5) {
+                    elev -= Math.pow(1.0 - Math.pow(dArgyre / 9.5, 2.1), 1.15) * 5600;
+                } else {
+                    const rimT = 1.0 - Math.abs(dArgyre - 11.2) / 2.2;
+                    elev += Math.max(0, rimT) * 1150;
+                }
+            }
+
+            const dIsidis = angularDistDeg(lat, lon, 12.9, 87.0);
+            if (dIsidis < 9.5) {
+                elev -= Math.pow(1.0 - Math.pow(dIsidis / 9.5, 2.0), 1.2) * 3400;
+            }
+            const dSyrtis = angularDistDeg(lat, lon, 8.4, 69.5);
+            if (dSyrtis < 10.5) {
+                elev += Math.pow(1.0 - dSyrtis / 10.5, 1.4) * 2100;
+            }
+
+            // 7. Población de Cráteres Multi-Escala
+            for (let c = 0; c < craters.length; c++) {
+                const cr = craters[c];
+                const dLat = Math.abs(lat - cr.lat);
+                if (dLat > cr.radiusDeg * 1.75) continue;
+                const d = angularDistDeg(lat, lon, cr.lat, cr.lon);
+                if (d < cr.radiusDeg * 1.72) {
+                    elev += craterProfile(d / cr.radiusDeg, cr.peak) * cr.depthM;
+                }
+            }
+
+            // 8. Casquetes Polares: Planum Boreum (con Chasma Boreale) y Planum Australe
+            if (lat > 78.5) {
+                const capT = Math.min(1.0, (lat - 78.5) / 7.5);
+                let polarDome = capT * 2850;
+                const dChasmaB = angularDistDeg(lat, lon, 82.5, -45.0);
+                if (dChasmaB < 4.5) {
+                    polarDome -= (1.0 - dChasmaB / 4.5) * 1450;
+                }
+                elev += polarDome;
+            }
+            if (lat < -76.0) {
+                const southT = Math.min(1.0, (Math.abs(lat) - 76.0) / 10.0);
+                elev += southT * 2600;
+            }
+
+            return Math.max(-8200, Math.min(21229, elev));
+        }
+
         /**
          * ============================================================================
          * 3. SÍNTESIS DE MODELO DIGITAL DE ELEVACIÓN MOLA Y PARÁMETROS FÍSICOS
          * ============================================================================
          */
         function generateScientificMolaModel() {
-            const craters = [];
-            for (let i = 0; i < 160; i++) {
-                const isHighland = i < 115;
-                const lat = isHighland
-                    ? -5 - hash2D(i, 1.1) * 72
-                    : (hash2D(i, 2.3) - 0.35) * 135;
-                const lon = (hash2D(i, 7.9) - 0.5) * 360;
-                const radiusDeg = i < 25
-                    ? 3.5 + hash2D(i, 4.1) * 6.5
-                    : 0.9 + hash2D(i, 4.1) * 2.8;
-                const depthM = radiusDeg * 420 + hash2D(i, 9.3) * 900;
-                craters.push({ lat, lon, radiusDeg, depthM, peak: radiusDeg > 2.4 });
+            const craters = getGlobalCraters();
+
+            for (let py = 0; py < TEX_H; py++) {
+                const lat = 90 - (py / (TEX_H - 1)) * 180;
+                for (let px = 0; px < TEX_W; px++) {
+                    const lon = -180 + (px / (TEX_W - 1)) * 360;
+                    hiResElevGrid[py * TEX_W + px] = evaluateGeologicalElevation(lat, lon, craters);
+                }
             }
 
             for (let y = 0; y < GRID_H; y++) {
                 const lat = 90 - (y / (GRID_H - 1)) * 180;
+                const py = Math.min(TEX_H - 1, Math.round((y / (GRID_H - 1)) * (TEX_H - 1)));
                 for (let x = 0; x < GRID_W; x++) {
                     const lon = -180 + (x / (GRID_W - 1)) * 360;
+                    const px = Math.min(TEX_W - 1, Math.round((x / (GRID_W - 1)) * (TEX_W - 1)));
                     const idx = y * GRID_W + x;
 
-                    const dichotomy = lat < 0
-                        ? 2300 * Math.min(1, Math.abs(lat) / 30)
-                        : -2900 * Math.min(1, lat / 35);
+                    const elev = hiResElevGrid[py * TEX_W + px];
+                    elevationGrid[idx] = elev;
 
-                    const macroTerrain = (fbm(x * 0.025, y * 0.025, 6) - 0.48) * 5400;
-                    const ridges = (ridgedFbm(x * 0.06, y * 0.06, 4) - 0.45) * 1400;
-                    let elev = dichotomy + macroTerrain + ridges;
-
-                    // 1. Provincia Volcánica de Tharsis y Olympus Mons (18.65° N, -133.8° W)
-                    const dOlympus = angularDistDeg(lat, lon, 18.65, -133.8);
-                    if (dOlympus < 12.5) {
-                        const t = 1 - dOlympus / 12.5;
-                        elev += Math.pow(t, 1.55) * 23800;
-                        if (dOlympus < 1.8) elev -= (1 - dOlympus / 1.8) * 3100;
-                    }
-
-                    // 2. Montes Tharsis y Elysium Mons
-                    const volcanoes = [
-                        { lat: 11.9, lon: -104.5, h: 14500, r: 7.5 },
-                        { lat: 0.8, lon: -113.4, h: 13800, r: 7.2 },
-                        { lat: -8.4, lon: -120.1, h: 15200, r: 8.0 },
-                        { lat: 25.0, lon: 147.0, h: 12400, r: 7.0 }
-                    ];
-                    volcanoes.forEach(v => {
-                        const dv = angularDistDeg(lat, lon, v.lat, v.lon);
-                        if (dv < v.r) {
-                            elev += Math.pow(1 - dv / v.r, 1.6) * v.h;
-                            if (dv < 1.1) elev -= (1 - dv / 1.1) * 2100;
-                        }
-                    });
-
-                    // 3. Valles Marineris (-13.8° S, -60.8° W)
-                    if (lat > -19.5 && lat < -7.5 && lon > -92 && lon < -34) {
-                        const centerLat = -13.6 - (lon + 62) * 0.07;
-                        const dCanyon = Math.abs(lat - centerLat);
-                        if (dCanyon < 3.4) {
-                            const lonEnv = Math.sin(((lon + 92) / 58) * Math.PI);
-                            const wallDetail = 0.85 + 0.3 * ridgedFbm(x * 0.25, y * 0.25, 3);
-                            elev -= (1 - Math.pow(dCanyon / 3.4, 1.6)) * 7500 * lonEnv * wallDetail;
-                        }
-                    }
-
-                    // 4. Cuenca de Impacto Hellas Planitia (-42.4° S, 70.5° E)
-                    const dHellas = angularDistDeg(lat, lon, -42.4, 70.5);
-                    if (dHellas < 23) {
-                        elev -= Math.pow(1 - dHellas / 23, 1.45) * 7900;
-                    }
-
-                    // 5. Cuenca Argyre Planitia (-49.7° S, -44.0° W)
-                    const dArgyre = angularDistDeg(lat, lon, -49.7, -44.0);
-                    if (dArgyre < 14) {
-                        elev -= Math.pow(1 - dArgyre / 14, 1.5) * 4800;
-                    }
-
-                    // 6. Cráter Gale (-4.65° S, 137.42° E) y Cráter Jezero (18.41° N, 77.50° E)
-                    const dGale = angularDistDeg(lat, lon, -4.65, 137.42);
-                    if (dGale < 4.5) elev += craterProfile(dGale / 2.7, true) * 3800;
-
-                    const dJezero = angularDistDeg(lat, lon, 18.41, 77.50);
-                    if (dJezero < 3.2) elev += craterProfile(dJezero / 1.9, false) * 2100;
-
-                    for (let c = 0; c < craters.length; c++) {
-                        const cr = craters[c];
-                        const d = angularDistDeg(lat, lon, cr.lat, cr.lon);
-                        if (d < cr.radiusDeg * 1.65) {
-                            elev += craterProfile(d / cr.radiusDeg, cr.peak) * cr.depthM;
-                        }
-                    }
-
-                    if (Math.abs(lat) > 79) {
-                        elev += (Math.abs(lat) - 79) * 210;
-                    }
-
-                    elevationGrid[idx] = Math.max(-8200, Math.min(21229, elev));
-
-                    // Temperatura superficial TES (180 K a 235 K)
                     const cosLat = Math.cos((lat * Math.PI) / 180);
-                    const lapseRate = ((elevationGrid[idx] + 8200) / 29429) * 18.0;
+                    const lapseRate = ((elev + 8200) / 29429) * 18.0;
                     const thermalNoise = (fbm(x * 0.05, y * 0.05, 3) - 0.5) * 8.0;
                     tempGrid[idx] = Math.max(180, Math.min(235, 185 + cosLat * 44 - lapseRate + thermalNoise));
 
-                    // Modelo Radiológico 4D MATLAB: Tasa(x, y) = 0.65 + (elev - (-8200)) * 0.05 / 1000.0
-                    radGrid[idx] = Math.max(0.65, Math.min(2.12, 0.65 + (elevationGrid[idx] - (-8200)) * 0.05 / 1000.0));
+                    radGrid[idx] = Math.max(0.65, Math.min(2.12, 0.65 + (elev - (-8200)) * 0.05 / 1000.0));
 
-                    // Opacidad óptica atmosférica por polvo Tau (0.0 a 3.8)
                     const s1 = Math.exp(-Math.pow(angularDistDeg(lat, lon, -32, 65) / 22, 2));
                     const s2 = Math.exp(-Math.pow(angularDistDeg(lat, lon, -18, -50) / 18, 2));
                     const dustNoise = fbm(x * 0.06 + 2.1, y * 0.06 + 5.4, 3);
@@ -965,7 +1075,6 @@
                 }
             }
 
-            // Cálculo de pendientes reales en grados
             const kmPerDeg = (2 * Math.PI * MARS_RADIUS_KM) / 360;
             const dyMeters = (180 / GRID_H) * kmPerDeg * 1000;
 
@@ -983,21 +1092,53 @@
                     const dzdx = (elevationGrid[y * GRID_W + xp] - elevationGrid[y * GRID_W + xm]) / (2 * dxMeters);
                     const dzdy = (elevationGrid[yp * GRID_W + x] - elevationGrid[ym * GRID_W + x]) / (2 * dyMeters);
                     const grad = Math.sqrt(dzdx * dzdx + dzdy * dzdy);
-                    const subCellRoughness = fbm(x * 0.35, y * 0.35, 3) * 0.18;
+                    const subCellRoughness = fbm(x * 0.35, y * 0.35, 3) * 0.16;
                     const slopeDeg = Math.atan(grad * 12 + subCellRoughness) * (180 / Math.PI);
                     slopeGrid[y * GRID_W + x] = Math.min(46, slopeDeg);
                 }
             }
         }
 
+        function sampleHiResElevationBilinear(lat, lon) {
+            let normLon = ((lon + 180) % 360 + 360) % 360 - 180;
+            const fx = ((normLon + 180) / 360) * (TEX_W - 1);
+            const fy = Math.max(0, Math.min(TEX_H - 1, ((90 - lat) / 180) * (TEX_H - 1)));
+            const x0 = Math.floor(fx);
+            const y0 = Math.floor(fy);
+            const x1 = (x0 + 1) % TEX_W;
+            const y1 = Math.min(TEX_H - 1, y0 + 1);
+            const tx = fx - x0;
+            const ty = fy - y0;
+
+            const e00 = hiResElevGrid[y0 * TEX_W + x0];
+            const e10 = hiResElevGrid[y0 * TEX_W + x1];
+            const e01 = hiResElevGrid[y1 * TEX_W + x0];
+            const e11 = hiResElevGrid[y1 * TEX_W + x1];
+            return (e00 * (1 - tx) + e10 * tx) * (1 - ty) + (e01 * (1 - tx) + e11 * tx) * ty;
+        }
+
         /**
          * ============================================================================
-         * 4. GENERACIÓN DE TEXTURAS HD (2048x1024) CON COLORES CALIBRADOS POR CAPA
+         * 4. GENERACIÓN DE TEXTURAS HD (2048x1024) + MAPAS NORMALES Y RUGOSIDAD 3D
          * ============================================================================
          */
         function buildHighResScientificTextures() {
-            const texW = 2048;
-            const texH = 1024;
+            const texW = TEX_W;
+            const texH = TEX_H;
+
+            const normalCanvas = document.createElement('canvas');
+            normalCanvas.width = texW;
+            normalCanvas.height = texH;
+            const nCtx = normalCanvas.getContext('2d');
+            const nImg = nCtx.createImageData(texW, texH);
+            const nData = nImg.data;
+
+            const roughCanvas = document.createElement('canvas');
+            roughCanvas.width = texW;
+            roughCanvas.height = texH;
+            const rCtx = roughCanvas.getContext('2d');
+            const rImg = rCtx.createImageData(texW, texH);
+            const rData = rImg.data;
 
             const layerNames = ['visual', 'elevation', 'temperature', 'radiation', 'weather', 'hazards'];
             layerNames.forEach(layerName => {
@@ -1014,6 +1155,9 @@
                     const y1 = Math.min(GRID_H - 1, y0 + 1);
                     const fy = gy - y0;
                     const lat = 90 - (py / (texH - 1)) * 180;
+                    const latRad = (lat * Math.PI) / 180;
+                    const cosLat = Math.cos(latRad);
+                    const sinLat = Math.sin(latRad);
 
                     for (let px = 0; px < texW; px++) {
                         const gx = (px / (texW - 1)) * (GRID_W - 1);
@@ -1021,14 +1165,16 @@
                         const x1 = Math.min(GRID_W - 1, x0 + 1);
                         const fx = gx - x0;
                         const lon = -180 + (px / (texW - 1)) * 360;
+                        const lonRad = (lon * Math.PI) / 180;
 
                         const i00 = y0 * GRID_W + x0;
                         const i10 = y0 * GRID_W + x1;
                         const i01 = y1 * GRID_W + x0;
                         const i11 = y1 * GRID_W + x1;
 
-                        const elev = (elevationGrid[i00] * (1 - fx) + elevationGrid[i10] * fx) * (1 - fy) +
-                                     (elevationGrid[i01] * (1 - fx) + elevationGrid[i11] * fx) * fy;
+                        const hIdx = py * texW + px;
+                        const elev = hiResElevGrid[hIdx];
+
                         const slope = (slopeGrid[i00] * (1 - fx) + slopeGrid[i10] * fx) * (1 - fy) +
                                       (slopeGrid[i01] * (1 - fx) + slopeGrid[i11] * fx) * fy;
                         const tempK = (tempGrid[i00] * (1 - fx) + tempGrid[i10] * fx) * (1 - fy) +
@@ -1038,100 +1184,152 @@
                         const tau = (tauGrid[i00] * (1 - fx) + tauGrid[i10] * fx) * (1 - fy) +
                                     (tauGrid[i01] * (1 - fx) + tauGrid[i11] * fx) * fy;
 
-                        const microFbm = fbm(px * 0.045, py * 0.045, 5);
-                        const fineRegolith = (fbm(px * 0.16, py * 0.16, 3) - 0.5) * 18;
-                        const strata = Math.sin(elev * 0.018 + microFbm * 4.0) * 5;
+                        const sx = cosLat * Math.cos(lonRad);
+                        const sy = sinLat;
+                        const sz = cosLat * Math.sin(lonRad);
 
-                        const elevRight = elevationGrid[y0 * GRID_W + Math.min(GRID_W - 1, x0 + 1)];
-                        const elevDown = elevationGrid[Math.min(GRID_H - 1, y0 + 1) * GRID_W + x0];
-                        const hillshade = Math.max(0.68, Math.min(1.32, 1.0 + ((elev - elevRight) * 0.00028) + ((elev - elevDown) * 0.00018)));
+                        const macroFbm = fbm(sx * 3.8 + 1.2, sz * 3.8 + sy * 2.4 + 4.1, 6);
+                        const microFbm = fbm(sx * 24.0 + 7.3, sz * 24.0 + sy * 18.0 + 2.9, 5);
+                        const fineRegolith = (fbm(sx * 68.0, sz * 68.0 + sy * 52.0, 3) - 0.5) * 14;
+                        const strata = Math.sin(elev * 0.022 + microFbm * 3.5) * 3.5;
+
+                        const pxL = (px - 1 + texW) % texW;
+                        const pxR = (px + 1) % texW;
+                        const pyU = Math.max(0, py - 1);
+                        const pyD = Math.min(texH - 1, py + 1);
+
+                        const elevL = hiResElevGrid[py * texW + pxL];
+                        const elevR = hiResElevGrid[py * texW + pxR];
+                        const elevU = hiResElevGrid[pyU * texW + px];
+                        const elevD = hiResElevGrid[pyD * texW + px];
+
+                        const dEdX = (elevR - elevL) * 0.5;
+                        const dEdY = (elevD - elevU) * 0.5;
+                        const hillshade = Math.max(0.62, Math.min(1.36, 1.0 - dEdX * 0.00055 - dEdY * 0.00038));
 
                         const normElev = Math.max(0, Math.min(1, (elev + 8200) / 29429));
 
-                        // Máscaras geográficas reales para regiones basálticas oscuras y escarcha en Hellas/Polos
+                        // Regiones de albedo óptico calibradas con Viking MDIM2.1
                         const dHellas = angularDistDeg(lat, lon, -42.4, 70.5);
                         const dSyrtis = angularDistDeg(lat, lon, 8.4, 69.5);
-                        const dAcidalia = angularDistDeg(lat, lon, 48.0, -22.0);
-                        const dMeridiani = angularDistDeg(lat, lon, -2.0, 0.0);
-                        const dCimmeria = angularDistDeg(lat, lon, -34.0, 145.0);
+                        const dAcidalia = angularDistDeg(lat, lon, 46.0, -24.0);
+                        const dMargaritifer = angularDistDeg(lat, lon, -6.0, -25.0);
+                        const dMeridiani = angularDistDeg(lat, lon, -3.0, 2.0);
+                        const dSabaea = angularDistDeg(lat, lon, -6.0, 38.0);
+                        const dTyrrhena = angularDistDeg(lat, lon, -18.0, 92.0);
+                        const dCimmeria = angularDistDeg(lat, lon, -32.0, 145.0);
+                        const dSirenum = angularDistDeg(lat, lon, -36.0, -155.0);
+                        const dValles = angularDistDeg(lat, lon, -13.5, -62.0);
 
-                        const basaltField = Math.max(
-                            Math.exp(-Math.pow(dSyrtis / 14, 2)) * 1.15,
-                            Math.exp(-Math.pow(dAcidalia / 20, 2)) * 0.95,
-                            Math.exp(-Math.pow(dMeridiani / 18, 2)) * 0.85,
-                            Math.exp(-Math.pow(dCimmeria / 22, 2)) * 0.80,
-                            (1.0 - fbm(px * 0.007 + 1.4, py * 0.007 + 6.2, 5)) * 0.92
+                        const polarCollar = Math.exp(-Math.pow((lat - 75.5) / 3.8, 2)) * (0.75 + 0.4 * microFbm);
+
+                        const basaltRaw = Math.max(
+                            Math.exp(-Math.pow(dSyrtis / 11.5, 2)) * 1.18,
+                            Math.exp(-Math.pow(dAcidalia / 18.5, 2)) * 1.05,
+                            Math.exp(-Math.pow(dMargaritifer / 15.0, 2)) * 0.96,
+                            Math.exp(-Math.pow(dMeridiani / 14.0, 2)) * 0.94,
+                            Math.exp(-Math.pow(dSabaea / 19.0, 2)) * 0.90,
+                            Math.exp(-Math.pow(dTyrrhena / 17.5, 2)) * 0.92,
+                            Math.exp(-Math.pow(dCimmeria / 22.0, 2)) * 0.92,
+                            Math.exp(-Math.pow(dSirenum / 20.0, 2)) * 0.88,
+                            Math.exp(-Math.pow(dValles / 13.0, 2)) * 0.86,
+                            polarCollar * 1.05,
+                            (1.0 - macroFbm) * 0.82
                         );
 
+                        const windStreak = fbm(sx * 14.0 + sz * 4.0, sy * 18.0 - sx * 3.0, 4);
+                        const basaltField = basaltRaw * (0.78 + 0.44 * windStreak);
+
                         let r, g, b;
+                        let roughVal = 232;
 
                         if (layerName === 'visual') {
-                            // 1. CAPA ÓPTICA (Viking MDIM2.1 / Mars Trek 2D):
-                            // - Blanco escarcha brillante (rgb ~232, 236, 240) en Hellas Planitia y casquetes polares
-                            // - Manchas basálticas oscuras gris-carbón/pizarra (rgb ~68, 62, 66 a 92, 82, 80)
-                            // - Tonos terracota y ocre rojizo cálido (rgb ~168, 104, 76 a 192, 126, 92)
-                            const isPolarFrost = Math.abs(lat) > 80.5 + (microFbm - 0.5) * 3.5;
-                            const isHellasFrost = dHellas < 13.5 + (microFbm - 0.5) * 3.5;
+                            const northFrostThresh = 79.8 + (microFbm - 0.5) * 4.8 + (macroFbm - 0.5) * 3.2;
+                            const isChasmaBoreale = angularDistDeg(lat, lon, 82.5, -45.0) < 3.6 + (microFbm - 0.5) * 1.8;
+                            const isNorthCap = lat > northFrostThresh && !isChasmaBoreale;
+                            const isSouthCap = lat < -80.2 + (microFbm - 0.5) * 4.2;
+                            const isHellasFrost = dHellas < 13.2 + (microFbm - 0.5) * 3.8;
 
-                            if (isPolarFrost || isHellasFrost) {
+                            if (isNorthCap || isSouthCap || isHellasFrost) {
                                 const frostEdge = isHellasFrost
-                                    ? Math.max(0, Math.min(1, (14.5 - dHellas + (microFbm - 0.5) * 3.0) / 4.0))
-                                    : 1.0;
-                                const baseR = 176 + fineRegolith * 0.5;
-                                const baseG = 112 + fineRegolith * 0.4;
-                                const baseB = 82 + fineRegolith * 0.3;
-                                r = baseR * (1 - frostEdge) + (234 + fineRegolith * 0.25) * frostEdge;
-                                g = baseG * (1 - frostEdge) + (238 + fineRegolith * 0.25) * frostEdge;
-                                b = baseB * (1 - frostEdge) + (242 + fineRegolith * 0.25) * frostEdge;
-                            } else if (basaltField > 0.54) {
-                                // Manchas basálticas gris-carbón / pizarra (Syrtis Major, Acidalia, Meridiani, Cimmeria)
-                                const mixB = Math.min(1, (basaltField - 0.54) / 0.32);
-                                const darkR = (74 + fineRegolith * 0.6 + strata) * hillshade;
-                                const darkG = (67 + fineRegolith * 0.55 + strata * 0.9) * hillshade;
-                                const darkB = (69 + fineRegolith * 0.5 + strata * 0.85) * hillshade;
-
-                                const terraR = (176 + normElev * 16 + fineRegolith * 0.8 + strata) * hillshade;
-                                const terraG = (112 + normElev * 14 + fineRegolith * 0.6 + strata * 0.75) * hillshade;
-                                const terraB = (82 + normElev * 10 + fineRegolith * 0.45 + strata * 0.6) * hillshade;
-
-                                r = terraR * (1 - mixB) + darkR * mixB;
-                                g = terraG * (1 - mixB) + darkG * mixB;
-                                b = terraB * (1 - mixB) + darkB * mixB;
+                                    ? Math.max(0, Math.min(1, (13.8 - dHellas + (microFbm - 0.5) * 3.4) / 4.2)) * 0.88
+                                    : 0.94;
+                                const baseR = (158 + fineRegolith * 0.5) * hillshade;
+                                const baseG = (104 + fineRegolith * 0.4) * hillshade;
+                                const baseB = (82 + fineRegolith * 0.3) * hillshade;
+                                const iceR = (232 + fineRegolith * 0.22) * (0.85 + 0.15 * hillshade);
+                                const iceG = (235 + fineRegolith * 0.22) * (0.85 + 0.15 * hillshade);
+                                const iceB = (238 + fineRegolith * 0.22) * (0.85 + 0.15 * hillshade);
+                                r = baseR * (1 - frostEdge) + iceR * frostEdge;
+                                g = baseG * (1 - frostEdge) + iceG * frostEdge;
+                                b = baseB * (1 - frostEdge) + iceB * frostEdge;
+                                roughVal = Math.round(232 * (1 - frostEdge) + 158 * frostEdge);
                             } else {
-                                // Mesetas y desiertos terracota y ocre rojizo cálido (rgb ~168,104,76 a 192,126,92)
-                                r = (174 + normElev * 18 + fineRegolith * 0.8 + strata) * hillshade;
-                                g = (110 + normElev * 16 + fineRegolith * 0.6 + strata * 0.75) * hillshade;
-                                b = (80 + normElev * 12 + fineRegolith * 0.45 + strata * 0.6) * hillshade;
+                                const dustVar = (macroFbm - 0.5) * 18 + (microFbm - 0.5) * 12;
+                                const highLatCool = Math.min(1, Math.abs(lat) / 70) * 12;
+
+                                const terraR = (168 + normElev * 14 + dustVar + fineRegolith * 0.75 + strata - highLatCool * 0.6) * hillshade;
+                                const terraG = (111 + normElev * 11 + dustVar * 0.75 + fineRegolith * 0.55 + strata * 0.7 - highLatCool * 0.2) * hillshade;
+                                const terraB = (86 + normElev * 8 + dustVar * 0.55 + fineRegolith * 0.42 + strata * 0.55 + highLatCool * 0.35) * hillshade;
+
+                                if (basaltField > 0.52) {
+                                    const mixB = Math.max(0, Math.min(0.92, (basaltField - 0.52) / 0.34));
+                                    const darkR = (70 + fineRegolith * 0.5 + strata * 0.8 + (microFbm - 0.5) * 10) * hillshade;
+                                    const darkG = (64 + fineRegolith * 0.45 + strata * 0.75 + (microFbm - 0.5) * 9) * hillshade;
+                                    const darkB = (67 + fineRegolith * 0.42 + strata * 0.7 + (microFbm - 0.5) * 9) * hillshade;
+
+                                    r = terraR * (1 - mixB) + darkR * mixB;
+                                    g = terraG * (1 - mixB) + darkG * mixB;
+                                    b = terraB * (1 - mixB) + darkB * mixB;
+                                    roughVal = Math.round(234 * (1 - mixB) + 214 * mixB);
+                                } else {
+                                    r = terraR;
+                                    g = terraG;
+                                    b = terraB;
+                                }
                             }
+
+                            const nStrength = 0.0022;
+                            let nxVal = -dEdX * nStrength + (microFbm - 0.5) * 0.08;
+                            let nyVal = dEdY * nStrength + (macroFbm - 0.5) * 0.08;
+                            let nzVal = 1.0;
+                            const invLen = 1.0 / Math.hypot(nxVal, nyVal, nzVal);
+                            nxVal *= invLen; nyVal *= invLen; nzVal *= invLen;
+
+                            const pIdxN = hIdx * 4;
+                            nData[pIdxN] = Math.round((nxVal * 0.5 + 0.5) * 255);
+                            nData[pIdxN + 1] = Math.round((nyVal * 0.5 + 0.5) * 255);
+                            nData[pIdxN + 2] = Math.round((nzVal * 0.5 + 0.5) * 255);
+                            nData[pIdxN + 3] = 255;
+
+                            rData[pIdxN] = roughVal;
+                            rData[pIdxN + 1] = roughVal;
+                            rData[pIdxN + 2] = roughVal;
+                            rData[pIdxN + 3] = 255;
                         } else if (layerName === 'elevation') {
-                            // 2. CAPA ALTIMETRÍA MOLA (-8,200 m a +21,229 m)
                             const rgb = lerpColorStops(normElev, MOLA_STOPS);
                             r = rgb[0] * hillshade;
                             g = rgb[1] * hillshade;
                             b = rgb[2] * hillshade;
                         } else if (layerName === 'temperature') {
-                            // 3. CAPA TEMPERATURA TES (180 K a 235 K)
                             const tNorm = (tempK - 180) / 55.0;
                             const rgb = lerpColorStops(tNorm, TES_TEMP_STOPS);
                             r = rgb[0] * hillshade;
                             g = rgb[1] * hillshade;
                             b = rgb[2] * hillshade;
                         } else if (layerName === 'radiation') {
-                            // 4. CAPA RADIACIÓN 4D (0.65 mSv/d a 2.12 mSv/d)
                             const rNorm = (rad - 0.65) / 1.47;
                             const rgb = lerpColorStops(rNorm, RAD_4D_STOPS);
                             r = rgb[0] * hillshade;
                             g = rgb[1] * hillshade;
                             b = rgb[2] * hillshade;
                         } else if (layerName === 'weather') {
-                            // 5. CAPA CLIMA / TORMENTAS DE ARENA (Optical Depth τ 0.0 a 3.8)
                             const tauNorm = tau / 3.8;
                             const rgb = lerpColorStops(tauNorm, TAU_DUST_STOPS);
                             r = rgb[0] * hillshade;
                             g = rgb[1] * hillshade;
                             b = rgb[2] * hillshade;
                         } else if (layerName === 'hazards') {
-                            // 6. CAPA PENDIENTE / RIESGO (<8° Verde, 8-18° Amarillo, 18-25° Naranja, >25° Rojo)
                             if (slope > 25) {
                                 r = 220 * hillshade; g = 38 * hillshade; b = 38 * hillshade;
                             } else if (slope > 18) {
@@ -1143,7 +1341,7 @@
                             }
                         }
 
-                        const pIdx = (py * texW + px) * 4;
+                        const pIdx = hIdx * 4;
                         data[pIdx] = Math.max(0, Math.min(255, r));
                         data[pIdx + 1] = Math.max(0, Math.min(255, g));
                         data[pIdx + 2] = Math.max(0, Math.min(255, b));
@@ -1153,40 +1351,40 @@
 
                 ctx.putImageData(imgData, 0, 0);
 
-                // Retícula geográfica planetocéntrica (cada 30°)
-                ctx.strokeStyle = 'rgba(226, 232, 240, 0.14)';
-                ctx.lineWidth = 1;
-                for (let lonLine = 0; lonLine <= texW; lonLine += texW / 12) {
-                    ctx.beginPath();
-                    ctx.moveTo(lonLine, 0);
-                    ctx.lineTo(lonLine, texH);
-                    ctx.stroke();
-                }
-                for (let latLine = 0; latLine <= texH; latLine += texH / 6) {
-                    ctx.beginPath();
-                    ctx.moveTo(0, latLine);
-                    ctx.lineTo(texW, latLine);
-                    ctx.stroke();
-                }
-
                 layerCanvases[layerName] = canvas;
                 const texture = new THREE.CanvasTexture(canvas);
                 texture.anisotropy = 8;
                 texture.wrapS = THREE.RepeatWrapping;
                 texture.wrapT = THREE.ClampToEdgeWrapping;
                 layerTextures[layerName] = texture;
+
+                if (layerName === 'visual') {
+                    nCtx.putImageData(nImg, 0, 0);
+                    globeNormalTexture = new THREE.CanvasTexture(normalCanvas);
+                    globeNormalTexture.anisotropy = 8;
+                    globeNormalTexture.wrapS = THREE.RepeatWrapping;
+                    globeNormalTexture.wrapT = THREE.ClampToEdgeWrapping;
+
+                    rCtx.putImageData(rImg, 0, 0);
+                    globeRoughnessTexture = new THREE.CanvasTexture(roughCanvas);
+                    globeRoughnessTexture.anisotropy = 4;
+                    globeRoughnessTexture.wrapS = THREE.RepeatWrapping;
+                    globeRoughnessTexture.wrapT = THREE.ClampToEdgeWrapping;
+                }
             });
         }
-        // Genera Malla DEM Local 256x256 centrada en el sitio o ruta seleccionada con colores calibrados
+
+        // Genera Malla DEM Local 256x256 centrada en el sitio o ruta seleccionada
         function rebuildLocalDemGeometry() {
             if (!marsTerrainMesh) return;
             const geo = marsTerrainMesh.geometry;
             const pos = geo.attributes.position;
             const uv = geo.attributes.uv;
 
-            const cLat = state.localDemCenter.lat;
-            const cLon = state.localDemCenter.lon;
-            const halfSpan = state.localDemCenter.spanDeg * 0.5;
+            const cLat = (state.origin.lat + state.dest.lat) * 0.5;
+            const cLon = (state.origin.lon + state.dest.lon) * 0.5;
+            const halfSpan = Math.max(1.2, Math.min(28, angularDistDeg(state.origin.lat, state.origin.lon, state.dest.lat, state.dest.lon) * 0.9));
+            state.localDemCenter = { lat: cLat, lon: cLon, spanDeg: halfSpan * 2 };
 
             const texCanvas = document.createElement('canvas');
             texCanvas.width = 1024;
@@ -1223,6 +1421,7 @@
             }
 
             const rangeE = Math.max(120, maxE - minE);
+            state.localDemBounds = { minE, rangeE };
 
             for (let i = 0; i < pos.count; i++) {
                 const u = uv.getX(i);
@@ -1271,10 +1470,9 @@
                         else if (localSlope > 8) { r = 234 * shade; g = 179 * shade; b = 8 * shade; }
                         else { r = 22 * shade; g = 163 * shade; b = 74 * shade; }
                     } else {
-                        // Textura Óptica Terracota / Ocre cálido HiRISE
-                        r = (172 + normGlobal * 20 + strata + grit) * shade;
-                        g = (108 + normGlobal * 18 + strata * 0.75 + grit * 0.7) * shade;
-                        b = (78 + normGlobal * 14 + strata * 0.6 + grit * 0.5) * shade;
+                        r = (168 + normGlobal * 16 + strata + grit) * shade;
+                        g = (111 + normGlobal * 13 + strata * 0.72 + grit * 0.65) * shade;
+                        b = (86 + normGlobal * 10 + strata * 0.58 + grit * 0.48) * shade;
                     }
 
                     const idx = (py * 1024 + px) * 4;
@@ -1285,13 +1483,6 @@
                 }
             }
             ctx.putImageData(imgData, 0, 0);
-
-            ctx.strokeStyle = 'rgba(56, 189, 248, 0.18)';
-            ctx.lineWidth = 1;
-            for (let g = 0; g <= 1024; g += 128) {
-                ctx.beginPath(); ctx.moveTo(g, 0); ctx.lineTo(g, 1024); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(0, g); ctx.lineTo(1024, g); ctx.stroke();
-            }
 
             const localTex = new THREE.CanvasTexture(texCanvas);
             localTex.anisotropy = 8;
@@ -1309,7 +1500,7 @@
         }
 
         function sampleHighDetailLocalElevation(lat, lon) {
-            const base = sampleTerrainAt(lat, lon).elev;
+            const base = sampleHiResElevationBilinear(lat, lon);
             const micro = (fbm((lon + 180) * 18, (90 - lat) * 18, 4) - 0.5) * 180;
             return base + micro;
         }
@@ -1321,7 +1512,7 @@
                 c.geometry.dispose();
                 contourLinesGroup.remove(c);
             }
-            const levels = 8;
+            const levels = 10;
             const points = [];
             for (let l = 1; l < levels; l++) {
                 const threshold = minE + (l / levels) * rangeE;
@@ -1340,7 +1531,7 @@
             }
             if (points.length > 0) {
                 const geo = new THREE.BufferGeometry().setFromPoints(points);
-                contourLinesGroup.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x38bdf8, size: 0.75, transparent: true, opacity: 0.65 })));
+                contourLinesGroup.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x38bdf8, size: 0.75, transparent: true, opacity: 0.7 })));
             }
         }
 
@@ -1359,10 +1550,11 @@
         function sampleTerrainAt(lat, lon) {
             const { x, y } = latLonToGrid(lat, lon);
             const idx = y * GRID_W + x;
+            const elev = hiResElevGrid.length ? sampleHiResElevationBilinear(lat, lon) : elevationGrid[idx];
             return {
-                elev: elevationGrid[idx],
+                elev: elev,
                 slope: slopeGrid[idx],
-                rad: radGrid[idx],
+                rad: Math.max(0.65, Math.min(2.12, 0.65 + (elev - (-8200)) * 0.05 / 1000.0)),
                 tau: tauGrid[idx],
                 tempK: tempGrid[idx]
             };
@@ -1382,7 +1574,7 @@
             return nums.length > 0 ? nums : [1.0, 1.0, 4.2, 1.1, 1.0];
         }
 
-        // Validación Numérica Exacta de la Matriz MATLAB 5x5 del usuario
+        // Validación Numérica Exacta de la Matriz MATLAB 5x5
         function openMatlabModal() {
             const demEjemplo = [
                 [5000, 5200, 5300, 5400, 5500],
@@ -1399,7 +1591,6 @@
                 row.map(elev => baseDose + (elev - minElev) * scaleFactor / 1000.0)
             );
 
-            // Rutas base 1 -> base 0
             const rutaMeseta = [[0,0],[0,1],[0,2],[0,3],[0,4]];
             const rutaValle  = [[0,0],[1,1],[2,2],[3,1],[4,0]];
 
@@ -1443,7 +1634,7 @@ ${pasosLog}
 
         /**
          * ============================================================================
-         * 4. MOTOR DE RUTAS TÁCTICAS A* MULTI-CRITERIO + ALERTA PERCLORATO
+         * 5. MOTOR DE RUTAS TÁCTICAS A* MULTI-CRITERIO + ALERTA PERCLORATO
          * ============================================================================
          */
         function computeSafeMarsRoute(origin, dest, priority = 'safe') {
@@ -1526,7 +1717,6 @@ ${pasosLog}
                 }
             }
 
-            // Fallback geodésico
             const fallback = [];
             for (let i = 0; i <= 48; i++) {
                 const t = i / 48;
@@ -1589,13 +1779,11 @@ ${pasosLog}
             const avgSlope = sumSlope / n;
             const avgTau = sumTau / n;
 
-            // Velocidades: Rover Presurizado 12.0 km/h | Caminata EVA 3.5 km/h
             const baseSpeed = state.vehicle === 'rover' ? 12.0 : 3.5;
             const effSpeed = baseSpeed * Math.max(0.55, 1 - avgSlope / 48) * Math.max(0.65, 1 - avgTau / 7.5);
             const travelHours = totalDistKm / effSpeed;
             const travelDays = travelHours / 24.0;
 
-            // Integración Numérica de Riemann 4D para Radiación con Perfil SPE f(t)
             const speProfile = getSpeProfileArray();
             const dt = travelDays / n;
             let totalRad4D = 0;
@@ -1604,10 +1792,8 @@ ${pasosLog}
                 totalRad4D += path[i].rad * speProfile[speIdx] * dt;
             }
 
-            // Ley de Beer-Lambert para Irradiancia Solar efectiva: I = I0 * exp(-tau)
             const solarIrradiance = SOLAR_CONSTANT_MARS * Math.exp(-avgTau);
 
-            // Soporte Vital O2 y Energía
             const crew = state.vehicle === 'rover' ? 2 : 1;
             const o2Kg = travelDays * 0.84 * crew;
             const energyKwh = state.vehicle === 'rover'
@@ -1625,7 +1811,7 @@ ${pasosLog}
 
         /**
          * ============================================================================
-         * 5. MOTOR 3D THREE.JS (GLOBO PLANETARIO + RELIEVE LOCAL 3D)
+         * 6. MOTOR 3D THREE.JS (GLOBO PLANETARIO FOTORREALISTA + RELIEVE LOCAL 3D)
          * ============================================================================
          */
         function latLonToVector3(lat, lon, elevMeters = 0) {
@@ -1640,6 +1826,45 @@ ${pasosLog}
             );
         }
 
+        function createMartianAtmosphereMaterial(sunDir) {
+            return new THREE.ShaderMaterial({
+                uniforms: {
+                    uSunDir: { value: sunDir.clone().normalize() }
+                },
+                vertexShader: `
+                    varying vec3 vNormalWorld;
+                    varying vec3 vWorldPos;
+                    void main() {
+                        vec4 worldPos = modelMatrix * vec4(position, 1.0);
+                        vWorldPos = worldPos.xyz;
+                        vNormalWorld = normalize(mat3(modelMatrix) * normal);
+                        gl_Position = projectionMatrix * viewMatrix * worldPos;
+                    }
+                `,
+                fragmentShader: `
+                    uniform vec3 uSunDir;
+                    varying vec3 vNormalWorld;
+                    varying vec3 vWorldPos;
+                    void main() {
+                        vec3 viewDir = normalize(cameraPosition - vWorldPos);
+                        vec3 n = normalize(vNormalWorld);
+                        float rim = clamp(1.0 + dot(n, viewDir), 0.0, 1.0);
+                        float limb = pow(rim, 4.2) * (1.0 - smoothstep(0.62, 0.96, rim));
+                        float sunFacing = smoothstep(-0.35, 0.65, dot(n, uSunDir));
+                        vec3 dustColor = vec3(0.84, 0.56, 0.40);
+                        vec3 twilightColor = vec3(0.45, 0.55, 0.72);
+                        vec3 scatter = mix(twilightColor, dustColor, sunFacing);
+                        float alpha = limb * (0.08 + 0.34 * sunFacing);
+                        gl_FragColor = vec4(scatter, alpha);
+                    }
+                `,
+                transparent: true,
+                depthWrite: false,
+                side: THREE.BackSide,
+                blending: THREE.AdditiveBlending
+            });
+        }
+
         function initThreeJS() {
             const container = document.getElementById('viewport-3d');
             scene = new THREE.Scene();
@@ -1650,17 +1875,21 @@ ${pasosLog}
             renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.04;
             container.appendChild(renderer.domElement);
 
             controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
-            controls.minDistance = 112;
+            controls.minDistance = 110;
             controls.maxDistance = 580;
 
-            scene.add(new THREE.AmbientLight(0x334155, 0.72));
-            const sunLight = new THREE.DirectionalLight(0xfff5ea, 1.85);
-            sunLight.position.set(320, 120, 240);
+            scene.add(new THREE.AmbientLight(0x283244, 0.32));
+            scene.add(new THREE.HemisphereLight(0x6e7f96, 0x2b1c17, 0.24));
+            const sunPos = new THREE.Vector3(340, 95, 230);
+            sunLight = new THREE.DirectionalLight(0xfff4e8, 2.05);
+            sunLight.position.copy(sunPos);
             scene.add(sunLight);
 
             // Campo estelar
@@ -1677,28 +1906,31 @@ ${pasosLog}
             starsGeo.setAttribute('position', new THREE.BufferAttribute(starsPos, 3));
             scene.add(new THREE.Points(starsGeo, new THREE.PointsMaterial({ color: 0xe2e8f0, size: 1.15, transparent: true, opacity: 0.7 })));
 
-            // Globo 3D de Marte
-            const sphereGeo = new THREE.SphereGeometry(GLOBE_RADIUS, 256, 128);
+            // Globo 3D de Marte con malla geológica densa (360x180) + Normal Map + Roughness Map
+            const sphereGeo = new THREE.SphereGeometry(GLOBE_RADIUS, 360, 180);
             displaceGlobeGeometry(sphereGeo, state.reliefScale);
             marsGlobeMesh = new THREE.Mesh(sphereGeo, new THREE.MeshStandardMaterial({
                 map: layerTextures['visual'],
+                normalMap: globeNormalTexture,
+                normalScale: new THREE.Vector2(1.35, 1.35),
                 bumpMap: layerTextures['elevation'],
-                bumpScale: 1.55,
-                roughness: 0.92,
-                metalness: 0.02
+                bumpScale: 0.85,
+                roughnessMap: globeRoughnessTexture,
+                roughness: 1.0,
+                metalness: 0.0
             }));
             scene.add(marsGlobeMesh);
 
             atmosphereMesh = new THREE.Mesh(
-                new THREE.SphereGeometry(GLOBE_RADIUS * 1.018, 96, 96),
-                new THREE.MeshBasicMaterial({ color: 0xd98a5b, transparent: true, opacity: 0.055, side: THREE.BackSide, blending: THREE.AdditiveBlending })
+                new THREE.SphereGeometry(GLOBE_RADIUS * 1.024, 128, 128),
+                createMartianAtmosphereMaterial(sunPos)
             );
             scene.add(atmosphereMesh);
 
             // Malla Relieve Local 3D (256x256)
             const planeGeo = new THREE.PlaneGeometry(220, 220, 255, 255);
             planeGeo.rotateX(-Math.PI / 2);
-            marsTerrainMesh = new THREE.Mesh(planeGeo, new THREE.MeshStandardMaterial({ roughness: 0.9, metalness: 0.02 }));
+            marsTerrainMesh = new THREE.Mesh(planeGeo, new THREE.MeshStandardMaterial({ roughness: 0.92, metalness: 0.0 }));
             marsTerrainMesh.visible = false;
             scene.add(marsTerrainMesh);
 
@@ -1748,9 +1980,9 @@ ${pasosLog}
             for (let i = 0; i < pos.count; i++) {
                 const lon = uv.getX(i) * 360 - 180;
                 const lat = uv.getY(i) * 180 - 90;
-                const sample = sampleTerrainAt(lat, lon);
+                const elev = sampleHiResElevationBilinear(lat, lon);
                 v.fromBufferAttribute(pos, i).normalize();
-                const disp = (sample.elev / 21229) * 3.8 * scale;
+                const disp = (elev / 21229) * 3.8 * scale;
                 v.multiplyScalar(GLOBE_RADIUS + disp);
                 pos.setXYZ(i, v.x, v.y, v.z);
             }
@@ -1758,58 +1990,14 @@ ${pasosLog}
             geometry.computeVertexNormals();
         }
 
-        function rebuildLocalTerrain3D() {
-            const geo = marsTerrainMesh.geometry;
-            const pos = geo.attributes.position;
-            const uv = geo.attributes.uv;
-            const cLat = (state.origin.lat + state.dest.lat) * 0.5;
-            const cLon = (state.origin.lon + state.dest.lon) * 0.5;
-            const halfSpan = Math.max(1.2, Math.min(28, angularDistDeg(state.origin.lat, state.origin.lon, state.dest.lat, state.dest.lon) * 0.9));
-            state.localDemCenter = { lat: cLat, lon: cLon, spanDeg: halfSpan * 2 };
-
-            let minE = Infinity, maxE = -Infinity;
-            const heights = new Float32Array(pos.count);
-            for (let i = 0; i < pos.count; i++) {
-                const lon = (cLon - halfSpan) + uv.getX(i) * (halfSpan * 2);
-                const lat = (cLat - halfSpan) + uv.getY(i) * (halfSpan * 2);
-                const e = sampleTerrainAt(lat, lon).elev + (ridgedFbm((lon + 180) * 15, (90 - lat) * 15, 4) - 0.5) * 240;
-                heights[i] = e;
-                if (e < minE) minE = e;
-                if (e > maxE) maxE = e;
-            }
-            const range = Math.max(150, maxE - minE);
-            for (let i = 0; i < pos.count; i++) {
-                pos.setY(i, ((heights[i] - minE) / range) * 24 * (state.reliefScale / 2.0));
-            }
-            pos.needsUpdate = true;
-            geo.computeVertexNormals();
-
-            // Recortar textura de la capa activa sobre la región local
-            const subCanvas = document.createElement('canvas');
-            subCanvas.width = 512; subCanvas.height = 512;
-            const sctx = subCanvas.getContext('2d');
-            const srcCanvas = layerCanvases[state.activeLayer];
-            const sx = Math.max(0, ((cLon - halfSpan + 180) / 360) * srcCanvas.width);
-            const sy = Math.max(0, ((90 - (cLat + halfSpan)) / 180) * srcCanvas.height);
-            const sw = Math.max(8, ((halfSpan * 2) / 360) * srcCanvas.width);
-            const sh = Math.max(8, ((halfSpan * 2) / 180) * srcCanvas.height);
-            sctx.drawImage(srcCanvas, sx, sy, sw, sh, 0, 0, 512, 512);
-            const tex = new THREE.CanvasTexture(subCanvas);
-            marsTerrainMesh.material.map = tex;
-            marsTerrainMesh.material.needsUpdate = true;
-        }
-
         function render3DRoute(path) {
             if (routeLine3D) { scene.remove(routeLine3D); routeLine3D.geometry.dispose(); }
-            if (routeMarkersGroup) scene.remove(routeMarkersGroup);
-            routeMarkersGroup = new THREE.Group();
-            scene.add(routeMarkersGroup);
-
             if (!path || path.length < 2) return;
 
             const cLat = state.localDemCenter.lat;
             const cLon = state.localDemCenter.lon;
             const halfSpan = state.localDemCenter.spanDeg * 0.5;
+            const { minE, rangeE } = state.localDemBounds;
 
             const pts = path.map(p => {
                 if (state.viewMode !== 'terrain') {
@@ -1817,13 +2005,15 @@ ${pasosLog}
                 } else {
                     const u = (p.lon - (cLon - halfSpan)) / (halfSpan * 2);
                     const v = (p.lat - (cLat - halfSpan)) / (halfSpan * 2);
-                    return new THREE.Vector3((u - 0.5) * 220, 12.5, -(v - 0.5) * 220);
+                    const localE = sampleHighDetailLocalElevation(p.lat, p.lon);
+                    const h = ((localE - minE) / rangeE) * 24 * (state.reliefScale / 2.2) + 0.65;
+                    return new THREE.Vector3((u - 0.5) * 220, h, -(v - 0.5) * 220);
                 }
             });
 
             const curve = new THREE.CatmullRomCurve3(pts);
             routeLine3D = new THREE.Mesh(
-                new THREE.TubeGeometry(curve, Math.max(64, path.length * 2), state.viewMode !== 'terrain' ? 0.55 : 0.8, 8, false),
+                new THREE.TubeGeometry(curve, Math.max(64, path.length * 2), state.viewMode !== 'terrain' ? 0.55 : 0.75, 8, false),
                 new THREE.MeshBasicMaterial({ color: 0xf59e0b })
             );
             scene.add(routeLine3D);
@@ -1835,241 +2025,16 @@ ${pasosLog}
                 markerB.position.copy(endPt.clone().normalize().multiplyScalar(endPt.length() + 2.3));
                 markerB.lookAt(0, 0, 0); markerB.rotateX(-Math.PI / 2);
             } else {
-                markerA.position.set(startPt.x, startPt.y + 2.5, startPt.z); markerA.rotation.set(0, 0, 0);
-                markerB.position.set(endPt.x, endPt.y + 2.5, endPt.z); markerB.rotation.set(0, 0, 0);
+                markerA.position.set(startPt.x, startPt.y + 2.4, startPt.z); markerA.rotation.set(0, 0, 0);
+                markerB.position.set(endPt.x, endPt.y + 2.4, endPt.z); markerB.rotation.set(0, 0, 0);
             }
         }
 
         /**
          * ============================================================================
-         * 6. MOTOR MAPA PLANO 2D (PROYECCIÓN EQUIRECTANGULAR IAU EPSG:104905)
+         * 7. CONTROL DE CAPAS GIS, VISTAS Y ETIQUETAS OFICIALES IAU (25)
          * ============================================================================
          */
-        function getFlatMapTransform() {
-            const canvas = document.getElementById('viewport-2d');
-            const w = canvas.width, h = canvas.height;
-            const aspect = 2.0; // 360° x 180°
-            let drawW = w * 0.94 * state.flatView.zoom;
-            let drawH = drawW / aspect;
-            if (drawH > h * 0.86 * state.flatView.zoom) {
-                drawH = h * 0.86 * state.flatView.zoom;
-                drawW = drawH * aspect;
-            }
-            const offsetX = (w - drawW) * 0.5 + state.flatView.panX;
-            const offsetY = (h - drawH) * 0.5 + state.flatView.panY;
-            return { offsetX, offsetY, drawW, drawH };
-        }
-
-        function latLonToFlatPx(lat, lon, tf) {
-            const u = (lon + 180) / 360;
-            const v = (90 - lat) / 180;
-            return { x: tf.offsetX + u * tf.drawW, y: tf.offsetY + v * tf.drawH };
-        }
-
-        function flatPxToLatLon(px, py, tf) {
-            const u = (px - tf.offsetX) / tf.drawW;
-            const v = (py - tf.offsetY) / tf.drawH;
-            if (u < 0 || u > 1 || v < 0 || v > 1) return null;
-            return { lon: u * 360 - 180, lat: 90 - v * 180 };
-        }
-
-        function renderFlat2DMap() {
-            if (state.viewMode !== 'flat') return;
-            const canvas = document.getElementById('viewport-2d');
-            if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
-            }
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#030508';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            const tf = getFlatMapTransform();
-            const srcCanvas = layerCanvases[state.activeLayer];
-            if (srcCanvas) {
-                ctx.drawImage(srcCanvas, tf.offsetX, tf.offsetY, tf.drawW, tf.drawH);
-            }
-
-            // Marco cartográfico IAU EPSG:104905
-            ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
-            ctx.lineWidth = 1.5;
-            ctx.strokeRect(tf.offsetX, tf.offsetY, tf.drawW, tf.drawH);
-
-            // Retícula Geodésica cada 30°
-            ctx.strokeStyle = 'rgba(226, 232, 240, 0.22)';
-            ctx.lineWidth = 1;
-            ctx.font = '10px IBM Plex Mono, monospace';
-            ctx.fillStyle = 'rgba(148, 163, 184, 0.85)';
-
-            for (let lon = -180; lon <= 180; lon += 30) {
-                const pt = latLonToFlatPx(0, lon, tf);
-                ctx.beginPath();
-                ctx.moveTo(pt.x, tf.offsetY);
-                ctx.lineTo(pt.x, tf.offsetY + tf.drawH);
-                ctx.stroke();
-                ctx.fillText(`${lon}°`, pt.x - 10, tf.offsetY - 5);
-            }
-            for (let lat = -90; lat <= 90; lat += 30) {
-                const pt = latLonToFlatPx(lat, -180, tf);
-                ctx.beginPath();
-                ctx.moveTo(tf.offsetX, pt.y);
-                ctx.lineTo(tf.offsetX + tf.drawW, pt.y);
-                ctx.stroke();
-                ctx.fillText(`${lat}°`, tf.offsetX - 30, pt.y + 3);
-            }
-
-            // Etiquetas Oficiales IAU (25 regiones)
-            if (state.showIauLabels) {
-                ctx.font = '500 10px Inter, sans-serif';
-                ctx.textAlign = 'center';
-                IAU_REGIONS.forEach(reg => {
-                    const pt = latLonToFlatPx(reg.lat, reg.lon, tf);
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-                    ctx.fillText(reg.name, pt.x + 1, pt.y + 1);
-                    ctx.fillStyle = 'rgba(241, 245, 249, 0.88)';
-                    ctx.fillText(reg.name, pt.x, pt.y);
-                });
-                ctx.textAlign = 'left';
-            }
-
-            // Pines de Minerales NASA/USGS (18)
-            if (state.showMinerals) {
-                NASA_MINERALS.forEach(min => {
-                    const pt = latLonToFlatPx(min.lat, min.lon, tf);
-                    ctx.beginPath();
-                    if (min.toxic) {
-                        // Rombo de alerta para Perclorato
-                        ctx.moveTo(pt.x, pt.y - 6); ctx.lineTo(pt.x + 6, pt.y);
-                        ctx.lineTo(pt.x, pt.y + 6); ctx.lineTo(pt.x - 6, pt.y);
-                        ctx.closePath();
-                    } else {
-                        ctx.arc(pt.x, pt.y, 3.8, 0, Math.PI * 2);
-                    }
-                    ctx.fillStyle = min.color;
-                    ctx.fill();
-                    ctx.strokeStyle = '#020617';
-                    ctx.lineWidth = 1.2;
-                    ctx.stroke();
-                });
-            }
-
-            // Sitios de Misión NASA (7)
-            NASA_MISSIONS.forEach(m => {
-                const pt = latLonToFlatPx(m.lat, m.lon, tf);
-                ctx.beginPath();
-                ctx.arc(pt.x, pt.y, 4.5, 0, Math.PI * 2);
-                ctx.fillStyle = '#38bdf8';
-                ctx.fill();
-                ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 1.3;
-                ctx.stroke();
-            });
-
-            // Ruta Táctica A* sobre el Plano 2D
-            if (state.routePoints && state.routePoints.length > 1) {
-                ctx.beginPath();
-                for (let i = 0; i < state.routePoints.length; i++) {
-                    const p = state.routePoints[i];
-                    const pt = latLonToFlatPx(p.lat, p.lon, tf);
-                    if (i === 0) {
-                        ctx.moveTo(pt.x, pt.y);
-                    } else {
-                        const prevLon = state.routePoints[i - 1].lon;
-                        if (Math.abs(p.lon - prevLon) > 180) ctx.moveTo(pt.x, pt.y);
-                        else ctx.lineTo(pt.x, pt.y);
-                    }
-                }
-                ctx.strokeStyle = '#f59e0b';
-                ctx.lineWidth = 3;
-                ctx.stroke();
-
-                // Marcadores A y B
-                const pA = latLonToFlatPx(state.origin.lat, state.origin.lon, tf);
-                const pB = latLonToFlatPx(state.dest.lat, state.dest.lon, tf);
-
-                ctx.fillStyle = '#38bdf8';
-                ctx.beginPath(); ctx.arc(pA.x, pA.y, 6, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = '#020617'; ctx.font = 'bold 9px IBM Plex Mono'; ctx.fillText('A', pA.x - 3, pA.y + 3);
-
-                ctx.fillStyle = '#f59e0b';
-                ctx.beginPath(); ctx.arc(pB.x, pB.y, 6, 0, Math.PI * 2); ctx.fill();
-                ctx.fillStyle = '#020617'; ctx.fillText('B', pB.x - 3, pB.y + 3);
-            }
-        }
-
-        function setupFlat2DEvents() {
-            const canvas = document.getElementById('viewport-2d');
-
-            canvas.addEventListener('wheel', e => {
-                if (state.viewMode !== 'flat') return;
-                e.preventDefault();
-                const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
-                state.flatView.zoom = Math.max(0.8, Math.min(8.0, state.flatView.zoom * zoomFactor));
-                renderFlat2DMap();
-            }, { passive: false });
-
-            canvas.addEventListener('pointerdown', e => {
-                if (state.viewMode !== 'flat') return;
-                state.flatView.isDragging = true;
-                state.flatView.dragStartX = e.clientX - state.flatView.panX;
-                state.flatView.dragStartY = e.clientY - state.flatView.panY;
-                state.flatView.moved = false;
-            });
-
-            canvas.addEventListener('pointermove', e => {
-                if (state.viewMode !== 'flat') return;
-                if (state.flatView.isDragging) {
-                    state.flatView.panX = e.clientX - state.flatView.dragStartX;
-                    state.flatView.panY = e.clientY - state.flatView.dragStartY;
-                    state.flatView.moved = true;
-                    renderFlat2DMap();
-                }
-                const tf = getFlatMapTransform();
-                const coords = flatPxToLatLon(e.clientX, e.clientY, tf);
-                if (coords) updateCursorHud(coords.lat, coords.lon);
-            });
-
-            canvas.addEventListener('pointerup', e => {
-                if (state.viewMode !== 'flat') return;
-                state.flatView.isDragging = false;
-                if (!state.flatView.moved && state.clickPinMode) {
-                    const tf = getFlatMapTransform();
-                    const coords = flatPxToLatLon(e.clientX, e.clientY, tf);
-                    if (coords) handleCoordinateSelection(coords.lat, coords.lon);
-                }
-            });
-        }
-
-        /**
-         * ============================================================================
-         * 7. PROYECCIÓN DE ETIQUETAS IAU EN GLOBO 3D Y CONTROL DE INTERFAZ
-         * ============================================================================
-         */
-        function update3DIauLabels() {
-            const overlay = document.getElementById('labels-overlay');
-            if (state.viewMode === 'flat' || !state.showIauLabels) {
-                overlay.innerHTML = '';
-                return;
-            }
-            let html = '';
-            const camDir = camera.position.clone().normalize();
-            IAU_REGIONS.forEach(reg => {
-                const pos3D = latLonToVector3(reg.lat, reg.lon, 200);
-                if (state.viewMode === 'globe') {
-                    const normal = pos3D.clone().normalize();
-                    if (normal.dot(camDir) < 0.18) return; // Ocultar caras traseras
-                } else {
-                    return;
-                }
-                const proj = pos3D.project(camera);
-                if (proj.z > 1) return;
-                const x = (proj.x * 0.5 + 0.5) * window.innerWidth;
-                const y = (-(proj.y * 0.5) + 0.5) * window.innerHeight;
-                html += `<div class="iau-label" style="left:${x}px;top:${y}px;">${reg.name}</div>`;
-            });
-            overlay.innerHTML = html;
-        }
-
         function setMapLayer(layer) {
             state.activeLayer = layer;
             const targetTex = layerTextures[layer];
@@ -2085,14 +2050,13 @@ ${pasosLog}
             }
 
             document.querySelectorAll('.layer-btn').forEach(btn => {
-                btn.className = 'layer-btn flex items-center justify-between px-2.5 py-1.5 rounded bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 transition';
+                btn.className = 'layer-btn flex items-center justify-between px-2 py-1.5 rounded bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 transition';
             });
             const activeBtn = document.getElementById(`layer-${layer}`);
             if (activeBtn) {
-                activeBtn.className = 'layer-btn flex items-center justify-between px-2.5 py-1.5 rounded bg-sky-500/15 border border-sky-400/40 text-white font-medium transition';
+                activeBtn.className = 'layer-btn flex items-center justify-between px-2 py-1.5 rounded bg-sky-500/15 border border-sky-400/40 text-white font-medium transition';
             }
 
-            // Leyenda dinámica exacta según la paleta de cada capa
             const legends = {
                 visual: [
                     'Basalto / Carbón',
@@ -2163,7 +2127,7 @@ ${pasosLog}
                 contourLinesGroup.visible = false;
                 if (missionsGroup3D) missionsGroup3D.visible = true;
                 if (mineralsGroup3D) mineralsGroup3D.visible = state.showMinerals;
-                controls.minDistance = 112;
+                controls.minDistance = 110;
                 camera.position.set(0, 50, 240);
                 btnGlobe.className = activeCls;
             } else if (mode === 'flat') {
@@ -2191,10 +2155,6 @@ ${pasosLog}
             }
             controls.target.set(0, 0, 0);
             render3DRoute(state.routePoints);
-        }
-
-        function renderFlat2DMap() {
-            renderFlatMap2D();
         }
 
         function toggleIauLabels() {
@@ -2243,11 +2203,13 @@ ${pasosLog}
 
         /**
          * ============================================================================
-         * 10. RENDERIZADO E INTERACCIÓN DEL MAPA PLANO 2D (IAU EPSG:104905)
+         * 8. RENDERIZADO E INTERACCIÓN DEL MAPA PLANO 2D (IAU EPSG:104905)
          * ============================================================================
          */
         function initFlatMap2D() {
             const canvas = document.getElementById('flat-map-canvas');
+            let moved = false;
+
             canvas.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 const factor = e.deltaY < 0 ? 1.18 : 0.85;
@@ -2260,6 +2222,7 @@ ${pasosLog}
                 state.isDraggingFlat = true;
                 state.dragStartX = e.clientX - state.flatPanX;
                 state.dragStartY = e.clientY - state.flatPanY;
+                moved = false;
             });
 
             window.addEventListener('pointermove', (e) => {
@@ -2267,18 +2230,11 @@ ${pasosLog}
                 if (state.isDraggingFlat) {
                     state.flatPanX = e.clientX - state.dragStartX;
                     state.flatPanY = e.clientY - state.dragStartY;
+                    moved = true;
                     renderFlatMap2D();
                 }
                 const coords = screenToFlatLatLon(e.clientX, e.clientY);
-                if (coords) {
-                    const sample = sampleTerrainAt(coords.lat, coords.lon);
-                    const latDir = coords.lat >= 0 ? 'N' : 'S';
-                    const lonDir = coords.lon >= 0 ? 'E' : 'O';
-                    document.getElementById('hud-coords').textContent = `${Math.abs(coords.lat).toFixed(4)}° ${latDir}, ${Math.abs(coords.lon).toFixed(4)}° ${lonDir}`;
-                    document.getElementById('hud-elev').textContent = `${Math.round(sample.elev).toLocaleString()} m`;
-                    document.getElementById('hud-slope-temp').textContent = `${sample.slope.toFixed(1)}° | ${Math.round(sample.tempK)} K (${Math.round(sample.tempK - 273)}°C)`;
-                    document.getElementById('hud-rad-tau').textContent = `${sample.rad.toFixed(2)} mSv/d | τ ${sample.tau.toFixed(2)}`;
-                }
+                if (coords) updateCursorHud(coords.lat, coords.lon);
             });
 
             window.addEventListener('pointerup', () => {
@@ -2286,30 +2242,18 @@ ${pasosLog}
             });
 
             canvas.addEventListener('click', (e) => {
-                if (!state.clickPinMode) return;
+                if (moved || !state.clickPinMode) return;
                 const coords = screenToFlatLatLon(e.clientX, e.clientY);
                 if (!coords) return;
 
-                const label = `${coords.lat.toFixed(3)}°, ${coords.lon.toFixed(3)}°`;
                 document.getElementById('select-preset-route').value = 'custom';
-                if (state.nextClickIsOrigin) {
-                    state.origin = { lat: coords.lat, lon: coords.lon, name: `Waypoint A (${label})` };
-                    state.nextClickIsOrigin = false;
-                    showToast('Origen A registrado. Seleccione ahora el Destino B en el mapa.');
-                } else {
-                    state.dest = { lat: coords.lat, lon: coords.lon, name: `Waypoint B (${label})` };
-                    state.nextClickIsOrigin = true;
-                    toggleMapClickMode();
-                    showToast('Ruta superficial recalculada.');
-                }
-                recalculateRoute();
-                renderFlatMap2D();
+                handleCoordinateSelection(coords.lat, coords.lon);
             });
         }
 
         function getFlatMapRect() {
             const canvas = document.getElementById('flat-map-canvas');
-            const aspect = 2.0; // 360° x 180°
+            const aspect = 2.0;
             let baseW = canvas.width * 0.92;
             let baseH = baseW / aspect;
             if (baseH > canvas.height * 0.78) {
@@ -2324,7 +2268,6 @@ ${pasosLog}
         }
 
         function screenToFlatLatLon(clientX, clientY) {
-            const canvas = document.getElementById('flat-map-canvas');
             const rect = getFlatMapRect();
             const u = (clientX - rect.x) / rect.w;
             const v = (clientY - rect.y) / rect.h;
@@ -2350,7 +2293,7 @@ ${pasosLog}
             canvas.height = window.innerHeight;
             const ctx = canvas.getContext('2d');
 
-            ctx.fillStyle = '#04060a';
+            ctx.fillStyle = '#030508';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             const sourceCanvas = layerCanvases[state.activeLayer];
@@ -2359,8 +2302,31 @@ ${pasosLog}
             const rect = getFlatMapRect();
             ctx.drawImage(sourceCanvas, rect.x, rect.y, rect.w, rect.h);
 
+            // Retícula Geodésica cada 30°
+            ctx.strokeStyle = 'rgba(226, 232, 240, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.font = '10px IBM Plex Mono, monospace';
+            ctx.fillStyle = 'rgba(148, 163, 184, 0.85)';
+
+            for (let lon = -180; lon <= 180; lon += 30) {
+                const pt = latLonToFlatScreen(0, lon, rect);
+                ctx.beginPath();
+                ctx.moveTo(pt.x, rect.y);
+                ctx.lineTo(pt.x, rect.y + rect.h);
+                ctx.stroke();
+                ctx.fillText(`${lon}°`, pt.x - 10, rect.y - 5);
+            }
+            for (let lat = -90; lat <= 90; lat += 30) {
+                const pt = latLonToFlatScreen(lat, -180, rect);
+                ctx.beginPath();
+                ctx.moveTo(rect.x, pt.y);
+                ctx.lineTo(rect.x + rect.w, pt.y);
+                ctx.stroke();
+                ctx.fillText(`${lat}°`, rect.x - 30, pt.y + 3);
+            }
+
             // Borde cartográfico
-            ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
             ctx.lineWidth = 1.5;
             ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
 
@@ -2375,6 +2341,7 @@ ${pasosLog}
                     ctx.fillStyle = '#f8fafc';
                     ctx.fillText(reg.name, pt.x, pt.y);
                 });
+                ctx.textAlign = 'left';
             }
 
             // Sitios NASA
@@ -2394,7 +2361,13 @@ ${pasosLog}
                 NASA_MINERALS.forEach(min => {
                     const pt = latLonToFlatScreen(min.lat, min.lon, rect);
                     ctx.beginPath();
-                    ctx.arc(pt.x, pt.y, min.toxic ? 5 : 3.5, 0, Math.PI * 2);
+                    if (min.toxic) {
+                        ctx.moveTo(pt.x, pt.y - 6); ctx.lineTo(pt.x + 6, pt.y);
+                        ctx.lineTo(pt.x, pt.y + 6); ctx.lineTo(pt.x - 6, pt.y);
+                        ctx.closePath();
+                    } else {
+                        ctx.arc(pt.x, pt.y, 3.6, 0, Math.PI * 2);
+                    }
                     ctx.fillStyle = min.color;
                     ctx.fill();
                     ctx.strokeStyle = '#04060a';
@@ -2409,7 +2382,11 @@ ${pasosLog}
                 state.routePoints.forEach((p, idx) => {
                     const pt = latLonToFlatScreen(p.lat, p.lon, rect);
                     if (idx === 0) ctx.moveTo(pt.x, pt.y);
-                    else ctx.lineTo(pt.x, pt.y);
+                    else {
+                        const prevLon = state.routePoints[idx - 1].lon;
+                        if (Math.abs(p.lon - prevLon) > 180) ctx.moveTo(pt.x, pt.y);
+                        else ctx.lineTo(pt.x, pt.y);
+                    }
                 });
                 ctx.strokeStyle = '#f59e0b';
                 ctx.lineWidth = 3;
@@ -2420,13 +2397,17 @@ ${pasosLog}
 
                 ctx.fillStyle = '#38bdf8';
                 ctx.beginPath(); ctx.arc(ptA.x, ptA.y, 6, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#020617'; ctx.font = 'bold 9px IBM Plex Mono'; ctx.fillText('A', ptA.x - 3, ptA.y + 3);
+
                 ctx.fillStyle = '#f59e0b';
                 ctx.beginPath(); ctx.arc(ptB.x, ptB.y, 6, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#020617'; ctx.fillText('B', ptB.x - 3, ptB.y + 3);
             }
         }
 
         function handleCoordinateSelection(lat, lon) {
             const label = `${lat.toFixed(2)}°, ${lon.toFixed(2)}°`;
+            document.getElementById('select-preset-route').value = 'custom';
             if (state.nextClickIsOrigin) {
                 state.origin = { lat, lon, name: `Waypoint A (${label})` };
                 state.nextClickIsOrigin = false;
@@ -2449,9 +2430,9 @@ ${pasosLog}
             state.routeStats = stats;
 
             updateTelemetryUI(path, stats);
-            if (state.viewMode === 'terrain') rebuildLocalTerrain3D();
+            if (state.viewMode === 'terrain') rebuildLocalDemGeometry();
             render3DRoute(path);
-            if (state.viewMode === 'flat') renderFlat2DMap();
+            if (state.viewMode === 'flat') renderFlatMap2D();
         }
 
         function updateTelemetryUI(path, stats) {
@@ -2477,7 +2458,6 @@ ${pasosLog}
 
             drawElevationChart(path);
 
-            // Giro a Giro (4 tramos principales)
             const listEl = document.getElementById('turn-by-turn-list');
             const idxs = [0, Math.floor(path.length * 0.33), Math.floor(path.length * 0.66), path.length - 1];
             let rows = '';
@@ -2531,7 +2511,7 @@ ${pasosLog}
             document.getElementById('hud-coords').textContent = `${Math.abs(lat).toFixed(4)}° ${latDir}, ${Math.abs(lon).toFixed(4)}° ${lonDir}`;
             document.getElementById('hud-lon360').textContent = formatLon360(lon);
             document.getElementById('hud-elev').textContent = `${Math.round(s.elev).toLocaleString()} m`;
-            document.getElementById('hud-slope-temp').textContent = `${s.slope.toFixed(1)}° | ${Math.round(s.tempK)} K`;
+            document.getElementById('hud-slope-temp').textContent = `${s.slope.toFixed(1)}° | ${Math.round(s.tempK)} K (${Math.round(s.tempK - 273)}°C)`;
             document.getElementById('hud-rad-tau').textContent = `${s.rad.toFixed(2)} mSv/d | τ ${s.tau.toFixed(2)}`;
         }
 
@@ -2585,7 +2565,7 @@ ${pasosLog}
             state.reliefScale = parseFloat(val);
             document.getElementById('relief-val').textContent = `${state.reliefScale.toFixed(1)}×`;
             if (marsGlobeMesh) {
-                const newGeo = new THREE.SphereGeometry(GLOBE_RADIUS, 256, 128);
+                const newGeo = new THREE.SphereGeometry(GLOBE_RADIUS, 360, 180);
                 displaceGlobeGeometry(newGeo, state.reliefScale);
                 marsGlobeMesh.geometry.dispose();
                 marsGlobeMesh.geometry = newGeo;
@@ -2601,6 +2581,9 @@ ${pasosLog}
                 ? 'hidden md:flex items-center gap-1.5 px-2 py-1 rounded bg-sky-500/15 border border-sky-400/40 text-[11px] text-sky-200 transition'
                 : 'hidden md:flex items-center gap-1.5 px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] text-slate-300 transition';
             if (contourLinesGroup) contourLinesGroup.visible = state.showContours && state.viewMode === 'terrain';
+            if (state.showContours && state.viewMode !== 'terrain') {
+                showToast('Cambie a "Relieve Local 3D" para visualizar las curvas de nivel topográficas.');
+            }
         }
 
         function toggleMapClickMode() {
@@ -2665,6 +2648,7 @@ ${pasosLog}
                 document.getElementById('select-dest').value = '5';
             }
             recalculateRoute();
+            focusOnCoords((state.origin.lat + state.dest.lat) * 0.5, (state.origin.lon + state.dest.lon) * 0.5);
         }
 
         function onSeasonChange(season) {
@@ -2743,10 +2727,8 @@ ${pasosLog}
 
         function focusOnCoords(lat, lon) {
             if (state.viewMode === 'globe' && camera && controls) {
-                const targetPos = latLonToVector3(lat, lon, 0).normalize().multiplyScalar(215);
-                camera.position.copy(targetPos);
-                controls.target.set(0, 0, 0);
-                controls.update();
+                const dist = Math.max(155, Math.min(235, camera.position.length()));
+                state.cameraFlyTarget = latLonToVector3(lat, lon, 0).normalize().multiplyScalar(dist);
             } else if (state.viewMode === 'flat') {
                 renderFlatMap2D();
             }
@@ -2765,19 +2747,21 @@ ${pasosLog}
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-            if (state.viewMode === 'flat') renderFlat2DMap();
+            if (state.viewMode === 'flat') renderFlatMap2D();
         }
 
         function animate() {
             requestAnimationFrame(animate);
-            const elapsed = clock.getElapsedTime();
+
+            if (state.cameraFlyTarget && state.viewMode === 'globe') {
+                camera.position.lerp(state.cameraFlyTarget, 0.08);
+                controls.target.lerp(new THREE.Vector3(0, 0, 0), 0.1);
+                if (camera.position.distanceTo(state.cameraFlyTarget) < 0.8) {
+                    state.cameraFlyTarget = null;
+                }
+            }
+
             controls.update();
-
-            const pulse = 1 + Math.sin(elapsed * 2.8) * 0.16;
-            siteMarkers.forEach(group => {
-                if (group.children[1]) group.children[1].scale.set(pulse, pulse, 1);
-            });
-
             updateIauLabels3D();
             renderer.render(scene, camera);
         }
@@ -2791,14 +2775,15 @@ ${pasosLog}
                 populateUIControls();
 
                 applyPresetRoute('curiosity_sharp');
-                focusOnCoords(-4.65, 137.42);
+                camera.position.copy(latLonToVector3(-4.65, 137.42, 0).normalize().multiplyScalar(215));
+                controls.update();
 
                 const loader = document.getElementById('loader-overlay');
                 loader.style.opacity = '0';
                 setTimeout(() => loader.remove(), 500);
 
                 animate();
-            }, 120);
+            }, 100);
         };
     </script>
 </body>
