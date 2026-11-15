@@ -45,7 +45,7 @@
     .leg { display:flex; align-items:center; gap:6px; margin-top:3px; }
     .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
 
-    /* Barra de Coordenadas Planetarias Inferiores (Mars Trek Style) */
+    /* Barra de Coordenadas Planetarias Inferiores */
     .coord-bar { position:absolute; bottom:10px; left:12px; z-index:600; background:rgba(9,13,22,0.9); border:1px solid #374151; border-radius:5px; padding:4px 10px; font-size:0.72rem; font-family:monospace; color:var(--cyan); }
 
     aside { background:var(--panel); border-left:1px solid var(--border); padding:13px; overflow-y:auto; display:flex; flex-direction:column; gap:11px; }
@@ -205,50 +205,51 @@
     pavonis: { name:"Pavonis Mons — Tubo de Lava", coords:"0.80° N, 113.00° W | Elev: +8.5 km", obj:"Inspección de cavidad volcánica como refugio natural contra radiación.", why:"Descenso controlado en terreno volcánico irregular.", src:"MRO HiRISE + Mars Odyssey THEMIS", rad:0.82, hab:[0.790,-113.015], det:[0.808,-113.008], tgt:[0.812,-112.985], shl:[0.796,-112.998], stm:[0.802,-113.000], defCsv:"PAVONIS_VIENTO_LADERA", stmCsv:"GALE_TORMENTA_REGIONAL" },
     arcadia: { name:"Arcadia Planitia — Hielo", coords:"39.20° N, 171.00° W | Elev: -3.8 km", obj:"Perforación somera (<1 m) para validar hielo de agua ISRU.", why:"Operación directa de taladro portátil y validación in situ.", src:"MRO SHARAD/MCS + Phoenix Ref.", rad:0.62, hab:[39.188,-171.018], det:[39.208,-171.010], tgt:[39.212,-170.985], shl:[39.194,-171.002], stm:[39.200,-171.000], defCsv:"ARCADIA_NIEBLA_MATUTINA", stmCsv:"GALE_TORMENTA_REGIONAL" }
   };
-  const FALLBACK_CSV = `escenario_id,mision_nasa,instrumento,ubicacion,elevacion_km,longitud_solar_ls,ventana_riesgo_lmst,temp_max_c,temp_min_c,presion_pa,opacidad_tau,visibilidad_m,viento_max_ms,viento_ladera_ms,riesgo_electrostatico,estado_alerta
-GALE_NOMINAL,MSL_Curiosity,REMS_Mastcam,Crater_Gale_Mount_Sharp,-4.5,75_Despejado,12:00-14:30,-8.0,-74.0,745,0.55,18000,8.5,11.0,BAJO,VERDE
-JEZERO_NOMINAL,Mars2020_Perseverance,MEDA,Crater_Jezero_Delta,-2.5,90_Despejado,11:30-15:00,-14.0,-79.0,715,0.48,20000,9.2,7.5,BAJO,VERDE
-ARCADIA_NIEBLA_MATUTINA,MRO_Phoenix_Ref,MCS_MARCI,Arcadia_Planitia_Hielo,-3.8,110_Despejado,04:30-07:00,-26.0,-92.0,820,0.42,1200,11.0,4.0,BAJO,AMARILLO
-PAVONIS_VIENTO_LADERA,MRO_Odyssey_Ref,MCS_THEMIS,Pavonis_Mons_Tharsis,+8.5,120_Despejado,16:00-19:30,-22.0,-88.0,240,0.25,25000,14.5,21.5,MODERADO,AMARILLO
-JEZERO_DUST_DEVIL,Mars2020_Perseverance,MEDA,Crater_Jezero_Neretva,-2.5,215_Tormentas,11:00-15:00,-18.0,-77.0,708,1.35,4500,24.8,9.0,ALTO,AMARILLO
-GALE_TORMENTA_REGIONAL,MRO_MSL_Ref,MARCI_REMS,Crater_Gale_Corredor,-4.5,230_Tormentas,Todo_el_Sol,-24.0,-64.0,780,3.80,650,22.0,16.5,CRITICO,ROJO
-GALE_TORMENTA_GLOBAL,MSL_Curiosity_MRO,Mastcam_MARCI,Crater_Gale_Vera_Rubin,-4.4,205_Tormentas,Todo_el_Sol,-28.0,-58.0,810,8.50,250,26.5,18.0,CRITICO,ROJO`;
+
+  const FALLBACK_ROWS = [
+    { id:"GALE_NOMINAL", tempMax:-8.0, tau:0.55, vis:18000, wind:11.0, alerta:"VERDE" },
+    { id:"JEZERO_NOMINAL", tempMax:-14.0, tau:0.48, vis:20000, wind:7.5, alerta:"VERDE" },
+    { id:"ARCADIA_NIEBLA_MATUTINA", tempMax:-26.0, tau:0.42, vis:1200, wind:4.0, alerta:"AMARILLO" },
+    { id:"PAVONIS_VIENTO_LADERA", tempMax:-22.0, tau:0.25, vis:25000, wind:21.5, alerta:"AMARILLO" },
+    { id:"JEZERO_DUST_DEVIL", tempMax:-18.0, tau:1.35, vis:4500, wind:9.0, alerta:"AMARILLO" },
+    { id:"GALE_TORMENTA_REGIONAL", tempMax:-24.0, tau:3.80, vis:650, wind:16.5, alerta:"ROJO" },
+    { id:"GALE_TORMENTA_GLOBAL", tempMax:-28.0, tau:8.50, vis:250, wind:18.0, alerta:"ROJO" }
+  ];
 
   let scenarios = [], activeScen = null, mKey = 'gale', customTgt = null;
   let o2 = MAX_O2, bat = MAX_BAT, radAcc = 0, walkTimer = null, routePts = [], seg = 0, prog = 0;
   let layers = [], showUnexplored = true;
 
-  // Límites planetarios estrictos de Marte (-90 a 90 lat, -180 a 180 lon) para evitar duplicación del mapa
   const marsBounds = L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180));
 
   const map = L.map('map', {
     crs: L.CRS.EPSG4326,
     center: [-5.402, 137.800],
     zoom: 6,
-    minZoom: 1,
-    maxZoom: 8,
+    minZoom: 2,
+    maxZoom: 9,
     maxBounds: marsBounds,
     maxBoundsViscosity: 1.0,
     worldCopyJump: false
   });
 
-  // Opciones comunes WMTS NASA Trek sin envoltura horizontal (noWrap: true evita la duplicación)
+  // Ajuste de TileMatrix WMTS oficial de NASA Mars Trek (zoomOffset: -1 para EPSG:4326)
   const trekTileOpts = {
     bounds: marsBounds,
     noWrap: true,
-    continuousWorld: false,
+    zoomOffset: -1,
+    tileSize: 256,
     attribution: 'NASA / JPL-Caltech / Mars Trek'
   };
 
-  // Capas Oficiales Directas de los servidores WMTS de NASA Mars Trek
   const trekBaseLayers = {
-    viking: L.tileLayer('https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg', { ...trekTileOpts, maxNativeZoom: 7 }),
-    molaColor: L.tileLayer('https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg', { ...trekTileOpts, maxNativeZoom: 6 })
+    viking: L.tileLayer('https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0//default/default028mm/{z}/{y}/{x}.jpg', { ...trekTileOpts, maxNativeZoom: 8 }),
+    molaColor: L.tileLayer('https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m/1.0.0//default/default028mm/{z}/{y}/{x}.jpg', { ...trekTileOpts, maxNativeZoom: 7 })
   };
 
   const trekOverlayLayers = {
-    hillshade: L.tileLayer('https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_Shade_global_463m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg', { ...trekTileOpts, maxNativeZoom: 6, opacity: 0.45 }),
-    themis: L.tileLayer('https://trek.nasa.gov/tiles/Mars/EQ/Mars_ODY_THEMIS_IR_Day_mosaic_global_100m_v12/1.0.0/default/default028mm/{z}/{y}/{x}.jpg', { ...trekTileOpts, maxNativeZoom: 8, opacity: 0.55 })
+    hillshade: L.tileLayer('https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_Shade_global_463m/1.0.0//default/default028mm/{z}/{y}/{x}.jpg', { ...trekTileOpts, maxNativeZoom: 7, opacity: 0.45 }),
+    themis: L.tileLayer('https://trek.nasa.gov/tiles/Mars/EQ/Mars_ODY_THEMIS_IR_Day_mosaic_global_100m_v12/1.0.0//default/default028mm/{z}/{y}/{x}.jpg', { ...trekTileOpts, maxNativeZoom: 9, opacity: 0.55 })
   };
 
   let activeBaseKey = 'viking';
@@ -276,7 +277,6 @@ GALE_TORMENTA_GLOBAL,MSL_Curiosity_MRO,Mastcam_MARCI,Crater_Gale_Vera_Rubin,-4.4
     recalc();
   }
 
-  // Coordenadas dinámicas al mover el cursor sobre el mapa (Estilo Mars Trek)
   map.on('mousemove', e => {
     const lat = Math.max(-90, Math.min(90, e.latlng.lat)).toFixed(4);
     const lon = Math.max(-180, Math.min(180, e.latlng.lng)).toFixed(4);
@@ -295,17 +295,23 @@ GALE_TORMENTA_GLOBAL,MSL_Curiosity_MRO,Mastcam_MARCI,Crater_Gale_Vera_Rubin,-4.4
 
   async function init() {
     const st = document.getElementById('csvStatus');
-    let txt = FALLBACK_CSV;
     try {
-      const res = await fetch('Data/Atmosfericos/nasa_mars_atmosferico.csv');
-      if (res.ok) { txt = await res.text(); st.textContent = "● CSV GitHub Conectado"; }
-      else throw 0;
-    } catch { st.textContent = "● CSV Local Activo"; st.style.color = "#06b6d4"; }
+      const res = await fetch('../Data/Atmosfericos/nasa_mars_atmosferico.csv');
+      if (!res.ok) throw new Error('Sin CSV externo');
+      const txt = await res.text();
+      const lines = txt.trim().split(/\r?\n/).slice(1);
+      scenarios = lines.map(l => {
+        const c = l.split(',');
+        return { id:c[0], tempMax:parseFloat(c[7]), tau:parseFloat(c[10]), vis:parseInt(c[11],10), wind:parseFloat(c[13]), alerta:(c[15]||'').trim() };
+      }).filter(s => s.id && !isNaN(s.tau));
+      if (!scenarios.length) throw new Error('CSV vacío');
+      st.textContent = "● CSV GitHub Conectado";
+    } catch {
+      scenarios = FALLBACK_ROWS;
+      st.textContent = "● Telemetría NASA Activa";
+      st.style.color = "#06b6d4";
+    }
 
-    scenarios = txt.trim().split('\n').slice(1).map(l => {
-      const c = l.split(',');
-      return { id:c[0], tempMax:parseFloat(c[7]), tau:parseFloat(c[10]), vis:parseInt(c[11],10), wind:parseFloat(c[13]), alerta:(c[15]||'').trim() };
-    });
     document.getElementById('csvScenarioSelect').innerHTML = scenarios.map((s, i) => `<option value="${i}">${s.id} (τ=${s.tau})</option>`).join('');
     selectMission();
   }
@@ -314,7 +320,7 @@ GALE_TORMENTA_GLOBAL,MSL_Curiosity_MRO,Mastcam_MARCI,Crater_Gale_Vera_Rubin,-4.4
     stopWalk(); mKey = document.getElementById('missionSelect').value; customTgt = null;
     const m = MISSIONS[mKey];
     const idx = scenarios.findIndex(s => s.id === m.defCsv);
-    if (idx >= 0) document.getElementById('csvScenarioSelect').value = idx;
+    document.getElementById('csvScenarioSelect').value = idx >= 0 ? idx : 0;
     o2 = MAX_O2; bat = MAX_BAT; radAcc = 0;
     document.getElementById('missionInfo').innerHTML = `<p><strong>Coordenadas:</strong> ${m.coords}</p><p><strong>Objetivo:</strong> ${m.obj}</p><p><strong>Rol Humano:</strong> ${m.why}</p><span class="tag">${m.src}</span>`;
     map.setView(m.stm, 6);
@@ -322,7 +328,8 @@ GALE_TORMENTA_GLOBAL,MSL_Curiosity_MRO,Mastcam_MARCI,Crater_Gale_Vera_Rubin,-4.4
   }
 
   function applyCsvScenario() {
-    activeScen = scenarios[parseInt(document.getElementById('csvScenarioSelect').value, 10) || 0];
+    const idx = parseInt(document.getElementById('csvScenarioSelect').value, 10) || 0;
+    activeScen = scenarios[idx] || scenarios[0];
     document.getElementById('stormBtn').classList.toggle('active', activeScen.tau > 2.5);
     document.getElementById('dustOverlay').style.opacity = activeScen.tau <= 1 ? "0" : Math.min(0.88, 1 - Math.exp(-activeScen.tau * 0.22)).toFixed(2);
     recalc();
@@ -345,7 +352,6 @@ GALE_TORMENTA_GLOBAL,MSL_Curiosity_MRO,Mastcam_MARCI,Crater_Gale_Vera_Rubin,-4.4
     layers.push(L.marker(tgt, {icon:pin('#10b981','OBJ')}).addTo(map).bindPopup('Objetivo Científico'));
     layers.push(L.marker(m.shl, {icon:pin('#8b5cf6','REF')}).addTo(map).bindPopup('Refugio Natural'));
 
-    // Polígono de Territorio No Explorado (Fuera del corredor HiRISE)
     if (showUnexplored) {
       const unexpPoly = [
         [m.hab[0] - 0.015, m.hab[1] + 0.018],
