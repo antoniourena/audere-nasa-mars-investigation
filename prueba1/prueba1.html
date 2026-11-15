@@ -27,7 +27,6 @@
     #map { width:100%; height:100%; background:#070a10; }
     #dustOverlay { pointer-events:none; position:absolute; inset:0; z-index:500; background:radial-gradient(circle,rgba(180,83,9,0.15),rgba(124,45,18,0.68)); opacity:0; transition:opacity 0.6s; }
     
-    /* Panel de Capas Estilo NASA Mars Trek */
     .trek-layers { position:absolute; top:12px; left:52px; z-index:600; background:rgba(17,24,39,0.94); border:1px solid #374151; border-radius:8px; padding:10px 12px; font-size:0.76rem; width:260px; box-shadow:0 4px 15px rgba(0,0,0,0.6); }
     .trek-layers h3 { font-size:0.72rem; text-transform:uppercase; color:var(--cyan); margin-bottom:7px; letter-spacing:0.6px; border-bottom:1px solid #1f2937; padding-bottom:4px; }
     .layer-item { margin-bottom:8px; }
@@ -38,14 +37,12 @@
     .opacity-row { display:flex; align-items:center; gap:6px; margin-left:18px; margin-top:3px; font-size:0.68rem; color:var(--muted); }
     .opacity-row input[type="range"] { flex:1; height:4px; accent-color:var(--cyan); cursor:pointer; }
 
-    /* Leyenda HUD derecha */
     .hud { position:absolute; top:12px; right:12px; z-index:600; background:rgba(17,24,39,0.92); border:1px solid #374151; border-radius:8px; padding:10px 12px; font-size:0.76rem; max-width:245px; }
     .hud h3 { font-size:0.72rem; text-transform:uppercase; color:var(--cyan); margin-bottom:5px; }
     .hud p { color:#d1d5db; line-height:1.35; margin-bottom:6px; }
     .leg { display:flex; align-items:center; gap:6px; margin-top:3px; }
     .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
 
-    /* Barra de Coordenadas Planetarias Inferiores */
     .coord-bar { position:absolute; bottom:10px; left:12px; z-index:600; background:rgba(9,13,22,0.9); border:1px solid #374151; border-radius:5px; padding:4px 10px; font-size:0.72rem; font-family:monospace; color:var(--cyan); }
 
     aside { background:var(--panel); border-left:1px solid var(--border); padding:13px; overflow-y:auto; display:flex; flex-direction:column; gap:11px; }
@@ -77,7 +74,7 @@
   <div class="brand">
     <span class="badge">AUDERE</span>
     <h1>NASA Mars Trek EVA Navigator</h1>
-    <span id="csvStatus" class="pill">Conectando...</span>
+    <span id="csvStatus" class="pill">● Telemetría NASA Lista</span>
   </div>
   <div class="controls">
     <select id="missionSelect" onchange="selectMission()">
@@ -97,15 +94,14 @@
     <div id="map"></div>
     <div id="dustOverlay"></div>
 
-    <!-- Gestor de Capas Reales NASA Mars Trek WMTS -->
     <div class="trek-layers">
-      <h3>Capas Cartográficas NASA Trek</h3>
+      <h3>Capas Cartográficas Marte</h3>
       
       <div class="layer-item">
         <label class="layer-head">
           <span><input type="radio" name="baseLayer" value="viking" checked onchange="switchBaseLayer('viking')">Viking Color Mosaic</span>
         </label>
-        <span class="layer-sub">Óptico Global (232 m/px)</span>
+        <span class="layer-sub">Óptico Global NASA (232 m/px)</span>
       </div>
 
       <div class="layer-item">
@@ -128,12 +124,12 @@
 
       <div class="layer-item">
         <label class="layer-head">
-          <span><input type="checkbox" id="chkThemis" onchange="toggleOverlayLayer('themis', this.checked)">THEMIS Infrarrojo Día</span>
+          <span><input type="checkbox" id="chkThemis" onchange="toggleOverlayLayer('themis', this.checked)">Nomenclatura IAU Marte</span>
         </label>
-        <span class="layer-sub">Inercia Térmica / Rocas (100 m/px)</span>
+        <span class="layer-sub">Cráteres, Montes y Valles</span>
         <div class="opacity-row">
           <span>Opacidad</span>
-          <input type="range" min="0" max="1" step="0.05" value="0.55" oninput="setOverlayOpacity('themis', this.value)">
+          <input type="range" min="0" max="1" step="0.05" value="0.85" oninput="setOverlayOpacity('themis', this.value)">
         </div>
       </div>
 
@@ -155,7 +151,7 @@
       <div class="leg"><span style="color:#10b981;font-weight:bold;">━━</span> Ruta Táctica Segura</div>
     </div>
 
-    <div class="coord-bar" id="marsCoords">CRS: IAU:49900 (Mars Equirectangular) | Lat: -5.4020° | Lon: 137.8000°</div>
+    <div class="coord-bar" id="marsCoords">CRS: Mars Mercator | Lat: -5.4020° | Lon: 137.8000°</div>
   </div>
   <aside>
     <div class="card">
@@ -206,7 +202,7 @@
     arcadia: { name:"Arcadia Planitia — Hielo", coords:"39.20° N, 171.00° W | Elev: -3.8 km", obj:"Perforación somera (<1 m) para validar hielo de agua ISRU.", why:"Operación directa de taladro portátil y validación in situ.", src:"MRO SHARAD/MCS + Phoenix Ref.", rad:0.62, hab:[39.188,-171.018], det:[39.208,-171.010], tgt:[39.212,-170.985], shl:[39.194,-171.002], stm:[39.200,-171.000], defCsv:"ARCADIA_NIEBLA_MATUTINA", stmCsv:"GALE_TORMENTA_REGIONAL" }
   };
 
-  const FALLBACK_ROWS = [
+  let scenarios = [
     { id:"GALE_NOMINAL", tempMax:-8.0, tau:0.55, vis:18000, wind:11.0, alerta:"VERDE" },
     { id:"JEZERO_NOMINAL", tempMax:-14.0, tau:0.48, vis:20000, wind:7.5, alerta:"VERDE" },
     { id:"ARCADIA_NIEBLA_MATUTINA", tempMax:-26.0, tau:0.42, vis:1200, wind:4.0, alerta:"AMARILLO" },
@@ -216,40 +212,44 @@
     { id:"GALE_TORMENTA_GLOBAL", tempMax:-28.0, tau:8.50, vis:250, wind:18.0, alerta:"ROJO" }
   ];
 
-  let scenarios = [], activeScen = null, mKey = 'gale', customTgt = null;
+  let activeScen = scenarios[0], mKey = 'gale', customTgt = null;
   let o2 = MAX_O2, bat = MAX_BAT, radAcc = 0, walkTimer = null, routePts = [], seg = 0, prog = 0;
   let layers = [], showUnexplored = true;
 
-  const marsBounds = L.latLngBounds(L.latLng(-90, -180), L.latLng(90, 180));
-
   const map = L.map('map', {
-    crs: L.CRS.EPSG4326,
     center: [-5.402, 137.800],
-    zoom: 6,
+    zoom: 12,
     minZoom: 2,
-    maxZoom: 9,
-    maxBounds: marsBounds,
-    maxBoundsViscosity: 1.0,
-    worldCopyJump: false
+    maxZoom: 16
   });
 
-  // Ajuste de TileMatrix WMTS oficial de NASA Mars Trek (zoomOffset: -1 para EPSG:4326)
-  const trekTileOpts = {
-    bounds: marsBounds,
-    noWrap: true,
-    zoomOffset: -1,
-    tileSize: 256,
-    attribution: 'NASA / JPL-Caltech / Mars Trek'
-  };
-
+  // Capas Oficiales OpenPlanetaryMap / NASA JPL-USGS Mars Tiles (compatibles con Leaflet)
   const trekBaseLayers = {
-    viking: L.tileLayer('https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0//default/default028mm/{z}/{y}/{x}.jpg', { ...trekTileOpts, maxNativeZoom: 8 }),
-    molaColor: L.tileLayer('https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_ClrShade_merge_global_463m/1.0.0//default/default028mm/{z}/{y}/{x}.jpg', { ...trekTileOpts, maxNativeZoom: 7 })
+    viking: L.tileLayer('https://cartocdn-gusc.global.ssl.fastly.net/opmbuilder/api/v1/map/named/opm-mars-basemap-v0-2/all/{z}/{x}/{y}.png', {
+      maxNativeZoom: 9,
+      maxZoom: 16,
+      attribution: 'NASA / USGS / OpenPlanetaryMap'
+    }),
+    molaColor: L.tileLayer('https://s3.amazonaws.com/opmbuilder/301_mars/tiles/mola_color/{z}/{x}/{y}.png', {
+      tms: true,
+      maxNativeZoom: 7,
+      maxZoom: 16,
+      attribution: 'NASA MGS MOLA'
+    })
   };
 
   const trekOverlayLayers = {
-    hillshade: L.tileLayer('https://trek.nasa.gov/tiles/Mars/EQ/Mars_MGS_MOLA_Shade_global_463m/1.0.0//default/default028mm/{z}/{y}/{x}.jpg', { ...trekTileOpts, maxNativeZoom: 7, opacity: 0.45 }),
-    themis: L.tileLayer('https://trek.nasa.gov/tiles/Mars/EQ/Mars_ODY_THEMIS_IR_Day_mosaic_global_100m_v12/1.0.0//default/default028mm/{z}/{y}/{x}.jpg', { ...trekTileOpts, maxNativeZoom: 9, opacity: 0.55 })
+    hillshade: L.tileLayer('https://s3.amazonaws.com/opmbuilder/301_mars/tiles/mola_shaded/{z}/{x}/{y}.png', {
+      tms: true,
+      maxNativeZoom: 7,
+      maxZoom: 16,
+      opacity: 0.45
+    }),
+    themis: L.tileLayer('https://cartocdn-gusc.global.ssl.fastly.net/opmbuilder/api/v1/map/named/opm-mars-basemap-v0-2/labels/{z}/{x}/{y}.png', {
+      maxNativeZoom: 9,
+      maxZoom: 16,
+      opacity: 0.85
+    })
   };
 
   let activeBaseKey = 'viking';
@@ -279,8 +279,8 @@
 
   map.on('mousemove', e => {
     const lat = Math.max(-90, Math.min(90, e.latlng.lat)).toFixed(4);
-    const lon = Math.max(-180, Math.min(180, e.latlng.lng)).toFixed(4);
-    document.getElementById('marsCoords').textContent = `CRS: IAU:49900 (Mars Equirectangular) | Lat: ${lat}° | Lon: ${lon}°`;
+    const lon = (((e.latlng.lng + 180) % 360 + 360) % 360 - 180).toFixed(4);
+    document.getElementById('marsCoords').textContent = `CRS: IAU:49900 (Mars) | Lat: ${lat}° | Lon: ${lon}°`;
   });
 
   let astroMarker = null, localOverlay = null;
@@ -293,27 +293,27 @@
   };
   const pathM = pts => pts.slice(1).reduce((acc, p, i) => acc + distM(pts[i], p), 0);
 
-  async function init() {
-    const st = document.getElementById('csvStatus');
-    try {
-      const res = await fetch('../Data/Atmosfericos/nasa_mars_atmosferico.csv');
-      if (!res.ok) throw new Error('Sin CSV externo');
-      const txt = await res.text();
-      const lines = txt.trim().split(/\r?\n/).slice(1);
-      scenarios = lines.map(l => {
-        const c = l.split(',');
-        return { id:c[0], tempMax:parseFloat(c[7]), tau:parseFloat(c[10]), vis:parseInt(c[11],10), wind:parseFloat(c[13]), alerta:(c[15]||'').trim() };
-      }).filter(s => s.id && !isNaN(s.tau));
-      if (!scenarios.length) throw new Error('CSV vacío');
-      st.textContent = "● CSV GitHub Conectado";
-    } catch {
-      scenarios = FALLBACK_ROWS;
-      st.textContent = "● Telemetría NASA Activa";
-      st.style.color = "#06b6d4";
-    }
-
+  function init() {
     document.getElementById('csvScenarioSelect').innerHTML = scenarios.map((s, i) => `<option value="${i}">${s.id} (τ=${s.tau})</option>`).join('');
     selectMission();
+
+    // Intentar sincronizar CSV externo en segundo plano sin bloquear la interfaz
+    fetch('../Data/Atmosfericos/nasa_mars_atmosferico.csv')
+      .then(res => res.ok ? res.text() : Promise.reject())
+      .then(txt => {
+        const parsed = txt.trim().split(/\r?\n/).slice(1).map(l => {
+          const c = l.split(',');
+          return { id:c[0], tempMax:parseFloat(c[7]), tau:parseFloat(c[10]), vis:parseInt(c[11],10), wind:parseFloat(c[13]), alerta:(c[15]||'').trim() };
+        }).filter(s => s.id && !isNaN(s.tau));
+        if (parsed.length) {
+          scenarios = parsed;
+          document.getElementById('csvStatus').textContent = "● CSV GitHub Conectado";
+          document.getElementById('csvScenarioSelect').innerHTML = scenarios.map((s, i) => `<option value="${i}">${s.id} (τ=${s.tau})</option>`).join('');
+        }
+      })
+      .catch(() => {
+        document.getElementById('csvStatus').textContent = "● Telemetría NASA Integrada";
+      });
   }
 
   function selectMission() {
@@ -323,7 +323,7 @@
     document.getElementById('csvScenarioSelect').value = idx >= 0 ? idx : 0;
     o2 = MAX_O2; bat = MAX_BAT; radAcc = 0;
     document.getElementById('missionInfo').innerHTML = `<p><strong>Coordenadas:</strong> ${m.coords}</p><p><strong>Objetivo:</strong> ${m.obj}</p><p><strong>Rol Humano:</strong> ${m.why}</p><span class="tag">${m.src}</span>`;
-    map.setView(m.stm, 6);
+    map.setView(m.stm, 13);
     applyCsvScenario();
   }
 
