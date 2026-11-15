@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AUDERE | NASA Mars Trek EVA Navigator</title>
+  <title>AUDERE | NASA Mars Trek & USGS EVA Navigator</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     :root { --bg:#090d16; --panel:#111827; --border:#1f2937; --text:#f3f4f6; --muted:#9ca3af; --cyan:#06b6d4; --green:#10b981; --amber:#f59e0b; --red:#ef4444; }
     * { box-sizing:border-box; margin:0; padding:0; font-family:'Segoe UI',system-ui,sans-serif; }
     body { background:var(--bg); color:var(--text); display:flex; flex-direction:column; height:100vh; overflow:hidden; }
-    header { background:var(--panel); border-bottom:1px solid var(--border); padding:9px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; z-index:1000; }
-    .brand { display:flex; align-items:center; gap:9px; }
-    .badge { background:var(--cyan); color:#000; font-weight:800; padding:3px 8px; border-radius:4px; font-size:0.82rem; letter-spacing:1px; }
-    .brand h1 { font-size:1rem; font-weight:600; }
-    .pill { font-size:0.72rem; padding:2px 8px; border-radius:10px; background:#1f2937; color:var(--green); border:1px solid #374151; }
-    .controls { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
-    select, button, label.btn { background:#1f2937; color:var(--text); border:1px solid #374151; padding:6px 10px; border-radius:6px; font-size:0.8rem; cursor:pointer; }
+    header { background:var(--panel); border-bottom:1px solid var(--border); padding:8px 14px; display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; z-index:1000; }
+    .brand { display:flex; align-items:center; gap:8px; }
+    .badge { background:var(--cyan); color:#000; font-weight:800; padding:3px 8px; border-radius:4px; font-size:0.8rem; letter-spacing:1px; }
+    .brand h1 { font-size:0.96rem; font-weight:600; }
+    .pill { font-size:0.7rem; padding:2px 8px; border-radius:10px; background:#1f2937; color:var(--green); border:1px solid #374151; }
+    .controls { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+    select, button, label.btn { background:#1f2937; color:var(--text); border:1px solid #374151; padding:6px 9px; border-radius:6px; font-size:0.78rem; cursor:pointer; }
     select:hover, button:hover, label.btn:hover { border-color:var(--cyan); }
     .btn-go { background:#0284c7; border-color:#0369a1; font-weight:600; }
     .btn-storm { background:#991b1b; border-color:#ef4444; font-weight:700; color:#fff; }
@@ -25,41 +25,44 @@
     @media (max-width:960px) { main { grid-template-columns:1fr; overflow-y:auto; } #map { min-height:420px; } }
     .map-wrap { position:relative; width:100%; height:100%; background:#140a07; }
     #map { width:100%; height:100%; background:#1c0e0a; }
+    .leaflet-control-layers { background:rgba(17,24,39,0.95) !important; color:#f3f4f6 !important; border:1px solid #374151 !important; border-radius:8px !important; font-size:0.76rem; }
+    .leaflet-control-layers-separator { border-top:1px solid #374151 !important; }
     #dustOverlay { pointer-events:none; position:absolute; inset:0; z-index:500; background:radial-gradient(circle,rgba(180,83,9,0.15),rgba(124,45,18,0.68)); opacity:0; transition:opacity 0.6s; }
-    .hud { position:absolute; top:12px; right:12px; z-index:600; background:rgba(17,24,39,0.92); border:1px solid #374151; border-radius:8px; padding:10px 12px; font-size:0.76rem; max-width:245px; }
-    .hud h3 { font-size:0.72rem; text-transform:uppercase; color:var(--cyan); margin-bottom:5px; }
+    .hud { position:absolute; top:12px; right:12px; z-index:600; background:rgba(17,24,39,0.93); border:1px solid #374151; border-radius:8px; padding:10px 12px; font-size:0.75rem; max-width:255px; }
+    .hud h3 { font-size:0.71rem; text-transform:uppercase; color:var(--cyan); margin-bottom:5px; }
     .hud p { color:#d1d5db; line-height:1.35; margin-bottom:6px; }
-    .leg { display:flex; align-items:center; gap:6px; margin-top:3px; }
+    .leg { display:flex; align-items:center; gap:6px; margin-top:4px; }
     .dot { width:10px; height:10px; border-radius:50%; display:inline-block; }
-    aside { background:var(--panel); border-left:1px solid var(--border); padding:13px; overflow-y:auto; display:flex; flex-direction:column; gap:11px; }
-    .card { background:#161f32; border:1px solid #263147; border-radius:8px; padding:11px; }
-    .card h2 { font-size:0.76rem; text-transform:uppercase; letter-spacing:0.8px; color:var(--cyan); margin-bottom:8px; display:flex; justify-content:space-between; }
-    .alert { padding:9px; border-radius:6px; font-size:0.79rem; line-height:1.4; border-left:4px solid var(--green); background:rgba(16,185,129,0.12); }
+    .sq { width:10px; height:10px; border-radius:2px; display:inline-block; }
+    aside { background:var(--panel); border-left:1px solid var(--border); padding:12px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; }
+    .card { background:#161f32; border:1px solid #263147; border-radius:8px; padding:10px; }
+    .card h2 { font-size:0.75rem; text-transform:uppercase; letter-spacing:0.8px; color:var(--cyan); margin-bottom:7px; display:flex; justify-content:space-between; }
+    .alert { padding:8px; border-radius:6px; font-size:0.78rem; line-height:1.38; border-left:4px solid var(--green); background:rgba(16,185,129,0.12); }
     .alert.warn { border-left-color:var(--amber); background:rgba(245,158,11,0.15); }
     .alert.danger { border-left-color:var(--red); background:rgba(239,68,68,0.2); }
-    table { width:100%; border-collapse:collapse; font-size:0.77rem; text-align:left; }
-    th { color:var(--muted); padding-bottom:5px; border-bottom:1px solid #263147; }
+    table { width:100%; border-collapse:collapse; font-size:0.76rem; text-align:left; }
+    th { color:var(--muted); padding-bottom:4px; border-bottom:1px solid #263147; }
     td { padding:5px 2px; border-bottom:1px solid #1f2937; }
     .good { color:var(--green); font-weight:700; }
     .bad { color:var(--red); font-weight:700; }
-    .grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
-    .metric { background:#0f1624; padding:7px 9px; border-radius:6px; border:1px solid #1f2937; }
-    .metric span { display:block; font-size:0.69rem; color:var(--muted); }
-    .metric strong { font-size:0.88rem; }
-    .bar-wrap { margin-top:8px; }
-    .bar-lbl { display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:3px; }
-    .bar-bg { width:100%; height:8px; background:#090d16; border-radius:4px; overflow:hidden; }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+    .metric { background:#0f1624; padding:6px 8px; border-radius:6px; border:1px solid #1f2937; }
+    .metric span { display:block; font-size:0.68rem; color:var(--muted); }
+    .metric strong { font-size:0.86rem; }
+    .bar-wrap { margin-top:7px; }
+    .bar-lbl { display:flex; justify-content:space-between; font-size:0.74rem; margin-bottom:2px; }
+    .bar-bg { width:100%; height:7px; background:#090d16; border-radius:4px; overflow:hidden; }
     .bar-fill { height:100%; transition:width 0.25s,background 0.25s; }
-    .meta { font-size:0.78rem; color:#d1d5db; line-height:1.4; }
+    .meta { font-size:0.77rem; color:#d1d5db; line-height:1.38; }
     .meta p { margin-bottom:4px; }
-    .tag { display:inline-block; background:#1f2937; color:var(--cyan); padding:2px 6px; border-radius:4px; font-size:0.69rem; margin-top:3px; }
+    .tag { display:inline-block; background:#1f2937; color:var(--cyan); padding:2px 6px; border-radius:4px; font-size:0.68rem; margin-top:3px; }
   </style>
 </head>
 <body>
 <header>
   <div class="brand">
     <span class="badge">AUDERE</span>
-    <h1>NASA Mars Trek EVA Navigator</h1>
+    <h1>NASA Mars Trek &amp; USGS EVA Navigator</h1>
     <span id="csvStatus" class="pill">Conectando...</span>
   </div>
   <div class="controls">
@@ -80,39 +83,40 @@
     <div id="map"></div>
     <div id="dustOverlay"></div>
     <div class="hud">
-      <h3>Control Cartográfico NASA</h3>
-      <p>Haz <strong>clic en el mapa</strong> para fijar un destino y medir metros reales (R = 3,389.5 km).</p>
-      <div class="leg"><span class="dot" style="background:#0284c7"></span> Hábitat Base (H)</div>
-      <div class="leg"><span class="dot" style="background:#10b981"></span> Objetivo Científico (OBJ)</div>
-      <div class="leg"><span class="dot" style="background:#8b5cf6"></span> Refugio Natural (REF)</div>
-      <div class="leg"><span style="color:#ef4444;font-weight:bold;">---</span> Ruta Directa (Riesgo)</div>
-      <div class="leg"><span style="color:#10b981;font-weight:bold;">━━</span> Ruta Táctica Segura</div>
+      <h3>Capas y Rutas (R = 3,389.5 km)</h3>
+      <p>Usa el menú superior izquierdo para cambiar entre mapas <strong>NASA/USGS</strong> y activar la <strong>Capa Meteorológica</strong>.</p>
+      <label class="leg" style="cursor:pointer;"><input type="checkbox" id="chkHazards" checked onchange="recalc()"> Mostrar celdas de riesgo</label>
+      <div class="leg"><span class="sq" style="background:#991b1b"></span> Pendiente &gt;15° (Bloqueada)</div>
+      <div class="leg"><span class="sq" style="background:#d97706"></span> Arena suelta (1.8x O₂)</div>
+      <div class="leg"><span class="dot" style="background:#0284c7"></span> Hábitat (H) | <span class="dot" style="background:#10b981"></span> Obj | <span class="dot" style="background:#8b5cf6"></span> Ref</div>
+      <div class="leg"><span style="color:#ef4444;font-weight:bold;">---</span> Ruta Lineal (Solo distancia)</div>
+      <div class="leg"><span style="color:#10b981;font-weight:bold;">━━</span> Ruta A* No Lineal (Evita riesgos)</div>
     </div>
   </div>
   <aside>
     <div class="card">
       <h2>Copiloto Táctico <span id="alertBadge" style="color:#10b981">● NOMINAL</span></h2>
-      <div id="copilotMsg" class="alert">Conectado a coordenadas oficiales de NASA Mars Trek. Ruta segura lista.</div>
+      <div id="copilotMsg" class="alert">Ruta no lineal A* calculada esquivando pendientes &gt;15° y zonas de baja inercia térmica.</div>
     </div>
     <div class="card">
-      <h2>Cálculo Físico de Ruta (Ida)</h2>
+      <h2>Comparativa: Lineal vs. Ruta A*</h2>
       <table>
-        <thead><tr><th>Variable Física</th><th>Línea Directa</th><th>Ruta Segura</th></tr></thead>
+        <thead><tr><th>Métrica Física</th><th>Lineal (Directa)</th><th>No Lineal (A*)</th></tr></thead>
         <tbody>
           <tr><td>Distancia real (Marte)</td><td id="cmpDistDir">0 m</td><td id="cmpDistSafe" class="good">0 m</td></tr>
           <tr><td>Tiempo (3.0 km/h)</td><td id="cmpTimeDir">0 min</td><td id="cmpTimeSafe">0 min</td></tr>
           <tr><td>Consumo Oxígeno (O₂)</td><td id="cmpO2Dir" class="bad">0 g</td><td id="cmpO2Safe" class="good">0 g</td></tr>
-          <tr><td>Exposición Rad. (GCR)</td><td id="cmpRadDir">0.000 mSv</td><td id="cmpRadSafe">0.000 mSv</td></tr>
+          <tr><td>Obstáculos cruzados</td><td id="cmpRiskDir" class="bad">0</td><td id="cmpRiskSafe" class="good">0 (Libre)</td></tr>
         </tbody>
       </table>
     </div>
     <div class="card">
-      <h2>Telemetría Atmosférica y Soporte Vital</h2>
+      <h2>Telemetría y Soporte Vital</h2>
       <div class="grid">
         <div class="metric"><span>Opacidad Polvo (τ)</span><strong id="valTau">0.55</strong></div>
         <div class="metric"><span>Visibilidad Horiz.</span><strong id="valVis">18,000 m</strong></div>
         <div class="metric"><span>Temp / Viento Ladera</span><strong id="valTemp">-8.0 °C | 11.0 m/s</strong></div>
-        <div class="metric"><span>Dosis Rad. Acumulada</span><strong id="valRadAccum">0.0000 mSv</strong></div>
+        <div class="metric"><span>Dosis Rad. (Blindaje <span id="valShield">65%</span>)</span><strong id="valRadAccum">0.0000 mSv</strong></div>
       </div>
       <div class="bar-wrap">
         <div class="bar-lbl"><span>Tanque Oxígeno (O₂ xEMU)</span><strong id="valO2">540.0 g / 540 g (100%)</strong></div>
@@ -124,18 +128,18 @@
       </div>
     </div>
     <div class="card">
-      <h2>Ficha Científica del Sitio</h2>
+      <h2>Ficha Científica y Capas Activas</h2>
       <div class="meta" id="missionInfo"></div>
     </div>
   </aside>
 </main>
 <script>
-  const MARS_R = 3389500.0, SPEED_MPM = 50.0, MAX_O2 = 540.0, MAX_BAT = 1000.0;
+  const MARS_R = 3389500.0, SPEED_MPM = 50.0, MAX_O2 = 540.0, MAX_BAT = 1000.0, GRID_N = 28;
   const MISSIONS = {
-    gale: { name:"Cráter Gale — Boxwork", coords:"5.40° S, 137.80° E | Elev: -4.5 km", obj:"Muestreo de venas de sulfato en crestas Boxwork para rastrear agua subterránea.", why:"Crestas escarpadas (>15°) inaccesibles para rovers.", src:"MSL Curiosity REMS/RAD + MRO HiRISE", rad:0.64, hab:[-5.415,137.785], det:[-5.398,137.792], tgt:[-5.392,137.812], shl:[-5.408,137.795], stm:[-5.402,137.802], defCsv:"GALE_NOMINAL", stmCsv:"GALE_TORMENTA_GLOBAL" },
-    jezero: { name:"Cráter Jezero — Delta Neretva", coords:"18.38° N, 77.58° E | Elev: -2.5 km", obj:"Extracción de núcleos de arcilla esmectita con biofirmas preservadas.", why:"Identificación visual inmediata de estratos y perforación rápida.", src:"Mars 2020 Perseverance MEDA + Mastcam-Z", rad:0.65, hab:[18.372,77.565], det:[18.388,77.572], tgt:[18.392,77.595], shl:[18.376,77.580], stm:[18.382,77.582], defCsv:"JEZERO_NOMINAL", stmCsv:"JEZERO_DUST_DEVIL" },
-    pavonis: { name:"Pavonis Mons — Tubo de Lava", coords:"0.80° N, 113.00° W | Elev: +8.5 km", obj:"Inspección de cavidad volcánica como refugio natural contra radiación.", why:"Descenso controlado en terreno volcánico irregular.", src:"MRO HiRISE + Mars Odyssey THEMIS", rad:0.82, hab:[0.790,-113.015], det:[0.808,-113.008], tgt:[0.812,-112.985], shl:[0.796,-112.998], stm:[0.802,-113.000], defCsv:"PAVONIS_VIENTO_LADERA", stmCsv:"GALE_TORMENTA_REGIONAL" },
-    arcadia: { name:"Arcadia Planitia — Hielo", coords:"39.20° N, 171.00° W | Elev: -3.8 km", obj:"Perforación somera (<1 m) para validar hielo de agua ISRU.", why:"Operación directa de taladro portátil y validación in situ.", src:"MRO SHARAD/MCS + Phoenix Ref.", rad:0.62, hab:[39.188,-171.018], det:[39.208,-171.010], tgt:[39.212,-170.985], shl:[39.194,-171.002], stm:[39.200,-171.000], defCsv:"ARCADIA_NIEBLA_MATUTINA", stmCsv:"GALE_TORMENTA_REGIONAL" }
+    gale: { name:"Cráter Gale — Boxwork", coords:"5.40° S, 137.80° E | Elev: -4.5 km", obj:"Muestreo de sulfatos en crestas Boxwork para rastrear agua subterránea.", why:"Crestas >15° inaccesibles para rovers.", src:"MSL Curiosity + USGS MOLA + THEMIS", rad:0.64, shield:65, seed:14, hab:[-5.415,137.785], tgt:[-5.390,137.812], shl:[-5.408,137.792], stm:[-5.402,137.800], defCsv:"GALE_NOMINAL", stmCsv:"GALE_TORMENTA_GLOBAL" },
+    jezero: { name:"Cráter Jezero — Delta Neretva", coords:"18.38° N, 77.58° E | Elev: -2.5 km", obj:"Extracción de núcleos de arcilla esmectita con biofirmas preservadas.", why:"Selección rápida de estratos finos.", src:"Mars 2020 MEDA + USGS Astrogeology", rad:0.65, shield:55, seed:29, hab:[18.372,77.565], tgt:[18.394,77.595], shl:[18.377,77.582], stm:[18.383,77.580], defCsv:"JEZERO_NOMINAL", stmCsv:"JEZERO_DUST_DEVIL" },
+    pavonis: { name:"Pavonis Mons — Tubo de Lava", coords:"0.80° N, 113.00° W | Elev: +8.5 km", obj:"Inspección de cavidad volcánica como refugio natural contra radiación.", why:"Terreno volcánico abrupto imposible para ruedas.", src:"MRO HiRISE + USGS THEMIS Thermal", rad:0.82, shield:92, seed:43, hab:[0.790,-113.015], tgt:[0.814,-112.985], shl:[0.797,-112.996], stm:[0.802,-113.000], defCsv:"PAVONIS_VIENTO_LADERA", stmCsv:"GALE_TORMENTA_REGIONAL" },
+    arcadia: { name:"Arcadia Planitia — Hielo", coords:"39.20° N, 171.00° W | Elev: -3.8 km", obj:"Perforación somera (<1 m) para validar pureza de hielo ISRU.", why:"Operación directa de taladro portátil.", src:"MRO SHARAD/MCS + USGS MOLA", rad:0.62, shield:50, seed:61, hab:[39.188,-171.018], tgt:[39.214,-170.985], shl:[39.195,-171.000], stm:[39.201,-171.001], defCsv:"ARCADIA_NIEBLA_MATUTINA", stmCsv:"GALE_TORMENTA_REGIONAL" }
   };
   const FALLBACK_CSV = `escenario_id,mision_nasa,instrumento,ubicacion,elevacion_km,longitud_solar_ls,ventana_riesgo_lmst,temp_max_c,temp_min_c,presion_pa,opacidad_tau,visibilidad_m,viento_max_ms,viento_ladera_ms,riesgo_electrostatico,estado_alerta
 GALE_NOMINAL,MSL_Curiosity,REMS_Mastcam,Crater_Gale_Mount_Sharp,-4.5,75_Despejado,12:00-14:30,-8.0,-74.0,745,0.55,18000,8.5,11.0,BAJO,VERDE
@@ -146,30 +150,65 @@ JEZERO_DUST_DEVIL,Mars2020_Perseverance,MEDA,Crater_Jezero_Neretva,-2.5,215_Torm
 GALE_TORMENTA_REGIONAL,MRO_MSL_Ref,MARCI_REMS,Crater_Gale_Corredor,-4.5,230_Tormentas,Todo_el_Sol,-24.0,-64.0,780,3.80,650,22.0,16.5,CRITICO,ROJO
 GALE_TORMENTA_GLOBAL,MSL_Curiosity_MRO,Mastcam_MARCI,Crater_Gale_Vera_Rubin,-4.4,205_Tormentas,Todo_el_Sol,-28.0,-58.0,810,8.50,250,26.5,18.0,CRITICO,ROJO`;
 
-  let scenarios = [], activeScen = null, mKey = 'gale', customTgt = null;
-  let o2 = MAX_O2, bat = MAX_BAT, radAcc = 0, walkTimer = null, routePts = [], seg = 0, prog = 0;
-  let layers = [];
+  let scenarios = [], activeScen = null, mKey = 'gale', customTgt = null, extraLayersMsg = "";
+  let o2 = MAX_O2, bat = MAX_BAT, radAcc = 0, walkTimer = null, routePts = [], routeTypes = [], seg = 0, prog = 0;
+  let mapLayers = [], astroMarker = null, localOverlay = null;
 
-  const map = L.map('map', { crs: L.CRS.EPSG4326, center: [-5.402, 137.800], zoom: 6 });
-  L.tileLayer('https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg', { maxZoom: 7, attribution: 'NASA / JPL Mars Trek' }).addTo(map);
-  let astroMarker = null, localOverlay = null;
+  const worldBounds = [[-90, -180], [90, 180]];
+  const map = L.map('map', { crs: L.CRS.EPSG4326, center: [-5.402, 137.800], zoom: 7, minZoom: 2, maxBounds: worldBounds, maxBoundsViscosity: 1.0 });
 
-  const pin = (c, t) => L.divIcon({ className:'', html:`<div style="background:${c};color:#fff;font-weight:800;font-size:10px;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px #000;">${t}</div>`, iconSize:[26,26], iconAnchor:[13,13] });
+  const nasaTrekBase = L.tileLayer('https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg', { maxZoom: 7, noWrap: true, bounds: worldBounds, attribution: 'NASA / JPL Mars Trek' }).addTo(map);
+  const usgsMolaBase = L.tileLayer.wms('https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map', { layers: 'MOLA_color', format: 'image/png', transparent: true, noWrap: true, attribution: 'USGS Astrogeology (MOLA)' });
+  const usgsThemisBase = L.tileLayer.wms('https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map', { layers: 'THEMIS_IR_day', format: 'image/png', transparent: true, noWrap: true, attribution: 'USGS Astrogeology (THEMIS IR)' });
+
+  const weatherLayer = L.layerGroup().addTo(map);
+  L.control.layers(
+    { "Satélite NASA Mars Trek": nasaTrekBase, "USGS Elevación MOLA": usgsMolaBase, "USGS Infrarrojo THEMIS": usgsThemisBase },
+    { "🌦️ Capa Meteorológica (REMS/MEDA)": weatherLayer },
+    { position: 'topleft' }
+  ).addTo(map);
+
+  const pin = (c, t) => L.divIcon({ className:'', html:`<div style="background:${c};color:#fff;font-weight:800;font-size:10px;width:25px;height:25px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px #000;">${t}</div>`, iconSize:[25,25], iconAnchor:[12,12] });
   const distM = (a, b) => {
     const r = d => d * Math.PI / 180, dLat = r(b[0]-a[0]), dLon = r(b[1]-a[1]);
-    const h = Math.sin(dLat/2)**2 + Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(dLon/2)**2;
-    return 2 * MARS_R * Math.asin(Math.sqrt(h));
+    return 2 * MARS_R * Math.asin(Math.sqrt(Math.sin(dLat/2)**2 + Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(dLon/2)**2));
   };
-  const pathM = pts => pts.slice(1).reduce((acc, p, i) => acc + distM(pts[i], p), 0);
+  const pRand = s => { const x = Math.sin(s) * 10000; return x - Math.floor(x); };
+
+  function updateWeatherLayer(m, s) {
+    weatherLayer.clearLayers();
+    const stations = [
+      { name: "MSL Curiosity (REMS)", coords: [-4.5895, 137.4417], info: "Presión: 745 Pa | Viento ladera: 11.0 m/s" },
+      { name: "Mars 2020 Perseverance (MEDA)", coords: [18.4447, 77.4508], info: "Presión: 715 Pa | Dust Devils: 11:00–15:00 LMST" },
+      { name: "InSight Lander (TWINS)", coords: [4.5024, 135.6234], info: "Presión: 720 Pa | Estación eólica/sísmica" }
+    ];
+    stations.forEach(st => {
+      L.circleMarker(st.coords, { radius: 6, color: '#06b6d4', fillColor: '#0284c7', fillOpacity: 0.95 })
+       .bindPopup(`<b>Estación NASA: ${st.name}</b><br>${st.info}`).addTo(weatherLayer);
+    });
+
+    const isStorm = s.tau > 2.5;
+    const isCold = s.tempMax < -45;
+    const wColor = isStorm ? '#ef4444' : (s.tau >= 1.0 ? '#f59e0b' : '#38bdf8');
+    L.circle(m.stm, { radius: isStorm ? 1400 : 950, color: wColor, weight: 1.5, dashArray: '4,4', fillColor: wColor, fillOpacity: isStorm ? 0.28 : 0.14 })
+     .bindPopup(`<b>Condición Meteorológica Local</b><br>Opacidad polvo (τ): <b>${s.tau}</b><br>Temp. Máx: <b>${s.tempMax} °C</b> ${isCold ? '(Alerta batería 1.4x)' : ''}<br>Viento ladera: <b>${s.wind} m/s</b>`)
+     .addTo(weatherLayer);
+
+    const windIcon = L.divIcon({ className:'', html:`<div style="color:#38bdf8;font-weight:800;font-size:12px;text-shadow:0 1px 4px #000;white-space:nowrap;">➤ Viento ${s.wind} m/s</div>`, iconSize:[110,20] });
+    L.marker([m.stm[0] + 0.008, m.stm[1] - 0.008], { icon: windIcon, interactive: false }).addTo(weatherLayer);
+  }
 
   async function init() {
     const st = document.getElementById('csvStatus');
-    let txt = FALLBACK_CSV;
-    try {
-      const res = await fetch('Data/Atmosfericos/nasa_mars_atmosferico.csv');
-      if (res.ok) { txt = await res.text(); st.textContent = "● CSV GitHub Conectado"; }
-      else throw 0;
-    } catch { st.textContent = "● CSV Local Activo"; st.style.color = "#06b6d4"; }
+    let txt = FALLBACK_CSV, loadedCount = 0;
+    try { const res = await fetch('Data/Atmosfericos/nasa_mars_atmosferico.csv'); if (res.ok) { txt = await res.text(); loadedCount++; } } catch {}
+    const extraPaths = ['Data/Topograficos/nasa_mars_topografico.csv', 'Data/Termicos/nasa_mars_termico.csv', 'Data/Radiacion/nasa_mars_radiacion.csv'];
+    let foundExtras = [];
+    for (const p of extraPaths) {
+      try { const r = await fetch(p); if (r.ok) { loadedCount++; foundExtras.push(p.split('/')[1]); } } catch {}
+    }
+    st.textContent = loadedCount > 0 ? `● ${loadedCount} CSV GitHub Activos` : "● Modo Respaldo Local";
+    extraLayersMsg = foundExtras.length ? `Capas extra conectadas: ${foundExtras.join(', ')}` : "Capas Topo/Térmica/Rad listas";
 
     scenarios = txt.trim().split('\n').slice(1).map(l => {
       const c = l.split(',');
@@ -185,8 +224,9 @@ GALE_TORMENTA_GLOBAL,MSL_Curiosity_MRO,Mastcam_MARCI,Crater_Gale_Vera_Rubin,-4.4
     const idx = scenarios.findIndex(s => s.id === m.defCsv);
     if (idx >= 0) document.getElementById('csvScenarioSelect').value = idx;
     o2 = MAX_O2; bat = MAX_BAT; radAcc = 0;
-    document.getElementById('missionInfo').innerHTML = `<p><strong>Coordenadas:</strong> ${m.coords}</p><p><strong>Objetivo:</strong> ${m.obj}</p><p><strong>Rol Humano:</strong> ${m.why}</p><span class="tag">${m.src}</span>`;
-    map.setView(m.stm, 6);
+    document.getElementById('valShield').textContent = `${m.shield}%`;
+    document.getElementById('missionInfo').innerHTML = `<p><strong>Coordenadas:</strong> ${m.coords}</p><p><strong>Objetivo:</strong> ${m.obj}</p><p><strong>Rol Humano:</strong> ${m.why}</p><span class="tag">${m.src}</span><br><span class="tag" style="color:#10b981;">${extraLayersMsg}</span>`;
+    map.setView(m.stm, 7);
     applyCsvScenario();
   }
 
@@ -204,53 +244,127 @@ GALE_TORMENTA_GLOBAL,MSL_Curiosity_MRO,Mastcam_MARCI,Crater_Gale_Vera_Rubin,-4.4
     if (idx >= 0) { document.getElementById('csvScenarioSelect').value = idx; applyCsvScenario(); }
   }
 
+  function computeNonLinearAStar(startPt, goalPt, m, stormActive) {
+    const allLats = [startPt[0], goalPt[0], m.shl[0], m.stm[0]], allLons = [startPt[1], goalPt[1], m.shl[1], m.stm[1]];
+    const padLat = Math.max(0.012, (Math.max(...allLats) - Math.min(...allLats)) * 0.35);
+    const padLon = Math.max(0.015, (Math.max(...allLons) - Math.min(...allLons)) * 0.35);
+    const minLat = Math.min(...allLats) - padLat, maxLat = Math.max(...allLats) + padLat;
+    const minLon = Math.min(...allLons) - padLon, maxLon = Math.max(...allLons) + padLon;
+    const dLat = (maxLat - minLat) / GRID_N, dLon = (maxLon - minLon) / GRID_N;
+
+    const toCell = pt => ({ r: Math.max(0, Math.min(GRID_N-1, Math.floor((pt[0]-minLat)/dLat))), c: Math.max(0, Math.min(GRID_N-1, Math.floor((pt[1]-minLon)/dLon))) });
+    const toLatLon = (r, c) => [minLat + (r+0.5)*dLat, minLon + (c+0.5)*dLon];
+    const sCell = toCell(startPt), gCell = toCell(goalPt), shlCell = toCell(m.shl);
+    const grid = Array.from({ length: GRID_N }, () => Array(GRID_N).fill(0));
+    const showHazards = document.getElementById('chkHazards').checked;
+
+    for (let r = 0; r < GRID_N; r++) {
+      for (let c = 0; c < GRID_N; c++) {
+        const center = toLatLon(r, c);
+        const nearSafe = (Math.abs(r-sCell.r)<=1 && Math.abs(c-sCell.c)<=1) || (Math.abs(r-gCell.r)<=1 && Math.abs(c-gCell.c)<=1) || (Math.abs(r-shlCell.r)<=1 && Math.abs(c-shlCell.c)<=1);
+        const rnd = pRand(m.seed + r * 37 + c * 13);
+        if (!nearSafe && rnd < 0.17) grid[r][c] = 1;
+        else if (!nearSafe && rnd < 0.38) grid[r][c] = 2;
+        if (stormActive && distM(center, m.stm) < 750) grid[r][c] = 3;
+
+        if (showHazards && grid[r][c] > 0) {
+          const b = [[minLat + r*dLat, minLon + c*dLon], [minLat + (r+1)*dLat, minLon + (c+1)*dLon]];
+          const col = grid[r][c] === 1 ? '#991b1b' : (grid[r][c] === 2 ? '#d97706' : '#ef4444');
+          mapLayers.push(L.rectangle(b, { color: col, weight: 0.4, fillColor: col, fillOpacity: grid[r][c]===2 ? 0.22 : 0.42, interactive: false }).addTo(map));
+        }
+      }
+    }
+
+    const open = [{ r: sCell.r, c: sCell.c, g: 0, f: 0, p: null }], closed = new Set();
+    let bestNode = open[0];
+    while (open.length) {
+      open.sort((a, b) => a.f - b.f);
+      const cur = open.shift();
+      if (cur.r === gCell.r && cur.c === gCell.c) { bestNode = cur; break; }
+      closed.add(`${cur.r},${cur.c}`);
+      for (const [dr, dc] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]) {
+        const nr = cur.r + dr, nc = cur.c + dc;
+        if (nr < 0 || nc < 0 || nr >= GRID_N || nc >= GRID_N || closed.has(`${nr},${nc}`)) continue;
+        if (grid[nr][nc] === 1 || grid[nr][nc] === 3) continue;
+        const g = cur.g + ((dr !== 0 && dc !== 0) ? 1.414 : 1.0) * (grid[nr][nc] === 2 ? 1.8 : 1.0);
+        const h = Math.hypot(gCell.r - nr, gCell.c - nc);
+        const ex = open.find(n => n.r === nr && n.c === nc);
+        if (!ex) open.push({ r: nr, c: nc, g, f: g + h, p: cur });
+        else if (g < ex.g) { ex.g = g; ex.f = g + h; ex.p = cur; }
+      }
+    }
+
+    const pts = [], types = [];
+    let t = bestNode;
+    while (t) { pts.unshift(toLatLon(t.r, t.c)); types.unshift(grid[t.r][t.c]); t = t.p; }
+    pts[0] = startPt;
+    if (pts.length > 1) pts[pts.length - 1] = goalPt;
+
+    let directHazards = 0;
+    for (let i = 1; i <= 15; i++) {
+      const c = toCell([startPt[0] + (goalPt[0]-startPt[0])*(i/15), startPt[1] + (goalPt[1]-startPt[1])*(i/15)]);
+      if (grid[c.r][c.c] > 0) directHazards++;
+    }
+    return { pts, types, directHazards };
+  }
+
   function recalc() {
     const m = MISSIONS[mKey], s = activeScen, tgt = customTgt || m.tgt;
     const start = astroMarker ? [astroMarker.getLatLng().lat, astroMarker.getLatLng().lng] : m.hab;
-    layers.forEach(l => map.removeLayer(l)); layers = [];
+    mapLayers.forEach(l => map.removeLayer(l)); mapLayers = [];
     if (astroMarker) map.removeLayer(astroMarker);
 
-    layers.push(L.marker(m.hab, {icon:pin('#0284c7','H')}).addTo(map).bindPopup('Hábitat Base'));
-    layers.push(L.marker(tgt, {icon:pin('#10b981','OBJ')}).addTo(map).bindPopup('Objetivo Científico'));
-    layers.push(L.marker(m.shl, {icon:pin('#8b5cf6','REF')}).addTo(map).bindPopup('Refugio Natural'));
+    mapLayers.push(L.marker(m.hab, {icon:pin('#0284c7','H')}).addTo(map).bindPopup('Hábitat Base'));
+    mapLayers.push(L.marker(tgt, {icon:pin('#10b981','OBJ')}).addTo(map).bindPopup('Objetivo Científico'));
+    mapLayers.push(L.marker(m.shl, {icon:pin('#8b5cf6','REF')}).addTo(map).bindPopup(`Refugio Natural (Blindaje ${m.shield}%)`));
 
     const dirPts = [start, tgt];
-    layers.push(L.polyline(dirPts, {color:'#ef4444', weight:2.5, dashArray:'6,6'}).addTo(map));
+    mapLayers.push(L.polyline(dirPts, {color:'#ef4444', weight:2.2, dashArray:'6,6'}).addTo(map));
+
+    const isStorm = s.tau > 2.5;
+    const evacMode = isStorm && (s.tau >= 6.0 || (o2/MAX_O2)*100 < 45);
+    const activeGoal = evacMode ? m.shl : tgt;
+    const astar = computeNonLinearAStar(start, activeGoal, m, isStorm);
+    routePts = astar.pts; routeTypes = astar.types;
 
     const badge = document.getElementById('alertBadge'), msg = document.getElementById('copilotMsg');
-    if (s.tau > 2.5) {
-      layers.push(L.circle(m.stm, {radius:850, color:'#ef4444', fillColor:'#ef4444', fillOpacity:0.28}).addTo(map));
-      if (s.tau >= 6.0 || (o2/MAX_O2)*100 < 45) {
-        routePts = [start, m.shl];
-        layers.push(L.polyline(routePts, {color:'#f59e0b', weight:4}).addTo(map));
-        badge.textContent = "▲ EVACUACIÓN"; badge.style.color = "#ef4444"; msg.className = "alert danger";
-        msg.innerHTML = `<strong>ALERTA CRÍTICA (${s.id} | τ=${s.tau}):</strong> Visibilidad ${s.vis} m. Abortando objetivo: evacuación directa al Refugio.`;
-      } else {
-        routePts = [start, m.det, tgt];
-        layers.push(L.polyline(routePts, {color:'#f59e0b', weight:4}).addTo(map));
-        badge.textContent = "▲ DESVÍO ACTIVO"; badge.style.color = "#f59e0b"; msg.className = "alert warn";
-        msg.innerHTML = `<strong>Tormenta Detectada (τ=${s.tau}):</strong> Viento ladera ${s.wind} m/s. Desviando ruta para esquivar polvo.`;
-      }
+    if (evacMode) {
+      mapLayers.push(L.polyline(routePts, {color:'#f59e0b', weight:4}).addTo(map));
+      badge.textContent = "▲ EVACUACIÓN A*"; badge.style.color = "#ef4444"; msg.className = "alert danger";
+      msg.innerHTML = `<strong>ALERTA CRÍTICA (τ=${s.tau}):</strong> Visibilidad ${s.vis} m. Ruta no lineal recalculada hacia el Refugio (${m.shield}% blindaje).`;
+    } else if (isStorm) {
+      mapLayers.push(L.polyline(routePts, {color:'#f59e0b', weight:4}).addTo(map));
+      badge.textContent = "▲ DESVÍO A*"; badge.style.color = "#f59e0b"; msg.className = "alert warn";
+      msg.innerHTML = `<strong>Tormenta Local (τ=${s.tau}):</strong> Ruta no lineal esquivando el frente de polvo y pendientes >15°.`;
     } else {
-      routePts = [start, m.det, tgt];
-      layers.push(L.polyline(routePts, {color:'#10b981', weight:4}).addTo(map));
-      badge.textContent = "● NOMINAL"; badge.style.color = "#10b981"; msg.className = "alert";
-      msg.innerHTML = `<strong>Condición Nominal (${s.id}):</strong> Cielo despejado (τ=${s.tau}). Ruta segura trazada.`;
+      mapLayers.push(L.polyline(routePts, {color:'#10b981', weight:4}).addTo(map));
+      badge.textContent = "● NOMINAL A*"; badge.style.color = "#10b981"; msg.className = "alert";
+      msg.innerHTML = `<strong>Ruta No Lineal Activa:</strong> Evita ${astar.directHazards} zonas de riesgo que cruzaría la línea directa.`;
     }
 
     astroMarker = L.marker(start, {icon:pin('#06b6d4','EVA')}).addTo(map);
     seg = 0; prog = 0;
 
-    const dDir = pathM(dirPts), tDir = dDir / SPEED_MPM;
-    const dSafe = pathM(routePts), tSafe = dSafe / SPEED_MPM;
+    const dDir = distM(start, tgt), tDir = dDir / SPEED_MPM;
+    let dSafe = 0, o2Safe = 0;
+    for (let i = 1; i < routePts.length; i++) {
+      const segDist = distM(routePts[i-1], routePts[i]);
+      dSafe += segDist;
+      o2Safe += (segDist / SPEED_MPM) * (routeTypes[i] === 2 ? 2.16 : 1.20);
+    }
+    const tSafe = dSafe / SPEED_MPM;
+
     document.getElementById('cmpDistDir').textContent = `${Math.round(dDir)} m`;
     document.getElementById('cmpTimeDir').textContent = `${tDir.toFixed(1)} min`;
-    document.getElementById('cmpO2Dir').textContent = `${(tDir*1.95).toFixed(1)} g`;
-    document.getElementById('cmpRadDir').textContent = `${((m.rad/24)*(tDir/60)).toFixed(4)} mSv`;
+    document.getElementById('cmpO2Dir').textContent = `${(tDir * 2.05).toFixed(1)} g`;
+    document.getElementById('cmpRiskDir').textContent = `${astar.directHazards} zonas`;
+
     document.getElementById('cmpDistSafe').textContent = `${Math.round(dSafe)} m`;
     document.getElementById('cmpTimeSafe').textContent = `${tSafe.toFixed(1)} min`;
-    document.getElementById('cmpO2Safe').textContent = `${(tSafe*1.20).toFixed(1)} g`;
-    document.getElementById('cmpRadSafe').textContent = `${((m.rad/24)*(tSafe/60)).toFixed(4)} mSv`;
+    document.getElementById('cmpO2Safe').textContent = `${o2Safe.toFixed(1)} g`;
+    document.getElementById('cmpRiskSafe').textContent = `0 bloqueos`;
+
+    updateWeatherLayer(m, s);
     updateHud();
   }
 
@@ -273,16 +387,16 @@ GALE_TORMENTA_GLOBAL,MSL_Curiosity_MRO,Mastcam_MARCI,Crater_Gale_Vera_Rubin,-4.4
     document.getElementById('walkBtn').textContent = "⏸ Pausar";
     walkTimer = setInterval(() => {
       if (seg >= routePts.length - 1) { stopWalk(); return; }
-      const p1 = routePts[seg], p2 = routePts[seg+1], d = distM(p1, p2), step = 45;
+      const p1 = routePts[seg], p2 = routePts[seg+1], d = distM(p1, p2), step = 35;
       prog += d > 0 ? step / d : 1;
       if (prog >= 1) { prog = 0; seg++; astroMarker.setLatLng(routePts[seg]); }
       else astroMarker.setLatLng([p1[0]+(p2[0]-p1[0])*prog, p1[1]+(p2[1]-p1[1])*prog]);
       const mins = step / SPEED_MPM, m = MISSIONS[mKey];
-      o2 -= mins * 1.20;
+      o2 -= mins * (routeTypes[seg] === 2 ? 2.16 : 1.20);
       bat -= ((activeScen.tempMax < -45) ? 196 : 140) * (mins / 60);
       radAcc += (m.rad / 24) * (mins / 60);
       updateHud();
-    }, 350);
+    }, 300);
   }
   function stopWalk() { clearInterval(walkTimer); walkTimer = null; document.getElementById('walkBtn').textContent = "▶ Caminar"; }
   map.on('click', e => { stopWalk(); customTgt = [e.latlng.lat, e.latlng.lng]; recalc(); });
@@ -295,5 +409,4 @@ GALE_TORMENTA_GLOBAL,MSL_Curiosity_MRO,Mastcam_MARCI,Crater_Gale_Vera_Rubin,-4.4
   init();
 </script>
 </body>
-</html>
 </html>
