@@ -1,1747 +1,401 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AUDERE | Navegador Planetario 3D/2D Real de Marte — NASA &amp; USGS</title>
-  <!-- Librerías oficiales: Three.js + Globe.gl (Globo 3D Real con Desplazamiento MOLA) y Leaflet (Mapa Táctico 2D) -->
-  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-  <script src="https://unpkg.com/globe.gl@2.32.1/dist/globe.gl.min.js"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <style>
-    :root {
-      --bg: #060a12;
-      --panel: #0d1424;
-      --card: #131d31;
-      --border: #1e2d4a;
-      --text: #f1f5f9;
-      --muted: #94a3b8;
-      --cyan: #06b6d4;
-      --green: #10b981;
-      --amber: #f59e0b;
-      --red: #ef4444;
-      --purple: #8b5cf6;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
-    body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MARS TREK // USGS Astrogeology GIS &amp; Tactical Surface Navigator 4D</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        :root {
+            --bg-canvas: #030508;
+            --panel-bg: rgba(9, 13, 22, 0.92);
+            --panel-card: rgba(15, 22, 36, 0.88);
+            --border-dim: rgba(148, 163, 184, 0.18);
+            --border-bright: rgba(56, 189, 248, 0.45);
+            --accent-cyan: #38bdf8;
+            --accent-amber: #f59e0b;
+            --accent-danger: #ef4444;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: var(--bg-canvas);
+            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            user-select: none;
+            -webkit-font-smoothing: antialiased;
+        }
+        .font-mono-gis {
+            font-family: 'IBM Plex Mono', monospace;
+            font-variant-numeric: tabular-nums;
+        }
+        .gis-panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-dim);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.82);
+        }
+        .gis-subcard {
+            background: var(--panel-card);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+        }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: rgba(7, 10, 18, 0.6); }
+        ::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.3); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.55); }
 
-    /* BARRA SUPERIOR */
-    header {
-      background: var(--panel);
-      border-bottom: 1px solid var(--border);
-      padding: 7px 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      flex-wrap: wrap;
-      z-index: 1000;
-    }
-    .brand { display: flex; align-items: center; gap: 8px; }
-    .badge { background: var(--cyan); color: #000; font-weight: 800; padding: 3px 8px; border-radius: 4px; font-size: 0.78rem; letter-spacing: 1px; }
-    .brand h1 { font-size: 0.92rem; font-weight: 600; }
-    .pill { font-size: 0.68rem; padding: 2px 8px; border-radius: 10px; background: #1e293b; color: var(--green); border: 1px solid #334155; }
-
-    .view-tabs { display: flex; background: #070b14; padding: 3px; border-radius: 7px; border: 1px solid #334155; gap: 3px; }
-    .tab-btn { background: transparent; border: none; color: var(--muted); padding: 4px 10px; border-radius: 5px; font-size: 0.76rem; font-weight: 600; cursor: pointer; transition: 0.2s; }
-    .tab-btn.active { background: #0284c7; color: #fff; }
-
-    .controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-    select, button, label.btn {
-      background: #17233b; color: var(--text); border: 1px solid #2b3f66;
-      padding: 5px 8px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; transition: 0.15s;
-    }
-    select:hover, button:hover, label.btn:hover { border-color: var(--cyan); }
-    .btn-go { background: #0284c7; border-color: #0369a1; font-weight: 600; }
-    .btn-storm { background: #991b1b; border-color: #ef4444; font-weight: 700; color: #fff; }
-    .btn-storm.active { background: #ef4444; box-shadow: 0 0 12px rgba(239, 68, 68, 0.75); }
-
-    /* BARRA DE INVESTIGACIÓN CIENTÍFICA */
-    .research-bar {
-      background: #0a101d;
-      border-bottom: 1px solid var(--border);
-      padding: 6px 12px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      font-size: 0.76rem;
-      z-index: 950;
-    }
-    .research-bar label { color: var(--cyan); font-weight: 600; display: flex; align-items: center; gap: 5px; }
-    .research-bar select { max-width: 330px; }
-
-    /* ESTRUCTURA PRINCIPAL */
-    main { display: grid; grid-template-columns: 1fr 430px; flex: 1; overflow: hidden; }
-    @media (max-width: 1024px) { main { grid-template-columns: 1fr; overflow-y: auto; } .viewport { min-height: 480px; } }
-
-    .viewport { position: relative; width: 100%; height: 100%; background: #020408; overflow: hidden; }
-    #globeView, #mapView { position: absolute; inset: 0; width: 100%; height: 100%; }
-    #mapView { visibility: hidden; pointer-events: none; z-index: 1; }
-    #mapView.active { visibility: visible; pointer-events: auto; z-index: 10; }
-    #globeView.hidden { visibility: hidden; pointer-events: none; }
-
-    /* PANEL FLOTANTE DE CAPAS (IZQUIERDA) */
-    .layers-hud {
-      position: absolute; top: 10px; left: 10px; z-index: 40;
-      background: rgba(13, 20, 36, 0.93); backdrop-filter: blur(6px);
-      border: 1px solid #2b3f66; border-radius: 8px; padding: 9px 11px;
-      font-size: 0.74rem; width: 272px;
-    }
-    .layers-hud h3 { font-size: 0.7rem; text-transform: uppercase; color: var(--cyan); margin-bottom: 5px; letter-spacing: 0.6px; }
-    .layer-opt { display: flex; align-items: center; gap: 7px; padding: 4px 6px; border-radius: 5px; cursor: pointer; margin-bottom: 2px; border: 1px solid transparent; }
-    .layer-opt:hover { background: rgba(6, 182, 212, 0.12); }
-    .layer-opt.selected { background: rgba(6, 182, 212, 0.18); border-color: rgba(6, 182, 212, 0.45); font-weight: 600; }
-    .layer-opt input[type="radio"], .layer-opt input[type="checkbox"] { accent-color: var(--cyan); cursor: pointer; }
-    .slider-row { padding: 3px 6px 5px 6px; display: flex; align-items: center; justify-content: space-between; gap: 6px; color: #cbd5e1; font-size: 0.7rem; }
-    .slider-row input[type="range"] { width: 110px; accent-color: var(--cyan); cursor: pointer; }
-    .sep { border-top: 1px solid #263656; margin: 6px 0; }
-    .cam-btns { display: flex; gap: 5px; margin-top: 5px; }
-    .cam-btns button { flex: 1; font-size: 0.71rem; padding: 4px 6px; }
-
-    /* LEYENDA Y CONTROLES DERECHA DEL VIEWPORT */
-    .hud-right {
-      position: absolute; top: 10px; right: 10px; z-index: 40;
-      background: rgba(13, 20, 36, 0.93); backdrop-filter: blur(6px);
-      border: 1px solid #2b3f66; border-radius: 8px; padding: 9px 11px;
-      font-size: 0.73rem; max-width: 260px;
-    }
-    .hud-right h3 { font-size: 0.7rem; text-transform: uppercase; color: var(--cyan); margin-bottom: 4px; }
-    .hud-right p { color: #cbd5e1; line-height: 1.32; margin-bottom: 5px; }
-    .leg { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
-    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
-    .sq { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex-shrink: 0; }
-
-    /* BANNER FLOTANTE DE ALERTA ACTIVA DE CAPA */
-    .layer-toast {
-      position: absolute; bottom: 12px; left: 12px; right: 12px; z-index: 45;
-      background: rgba(13, 20, 36, 0.95); backdrop-filter: blur(6px);
-      border: 1px solid #334155; border-left: 5px solid var(--cyan);
-      border-radius: 8px; padding: 8px 12px; font-size: 0.76rem;
-      display: flex; align-items: center; justify-content: space-between; gap: 10px;
-      box-shadow: 0 4px 18px rgba(0,0,0,0.6);
-    }
-    .layer-toast.warn { border-left-color: var(--amber); }
-    .layer-toast.danger { border-left-color: var(--red); }
-
-    /* FILTRO ÓPTICO BEER-LAMBERT POR TORMENTA */
-    #dustOverlay {
-      pointer-events: none; position: absolute; inset: 0; z-index: 25;
-      background: radial-gradient(circle, rgba(180, 83, 9, 0.12), rgba(124, 45, 18, 0.62));
-      opacity: 0; transition: opacity 0.6s;
-    }
-
-    /* ETIQUETAS DE MAPA 2D */
-    .mars-lbl {
-      background: rgba(13, 20, 36, 0.88); color: #f8fafc; border: 1px solid #334155;
-      padding: 1px 5px; border-radius: 4px; font-size: 10px; font-weight: 600; white-space: nowrap;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.8);
-    }
-
-    /* PANEL LATERAL DERECHO */
-    aside {
-      background: var(--panel); border-left: 1px solid var(--border);
-      padding: 10px 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 9px; z-index: 50;
-    }
-    .card { background: var(--card); border: 1px solid #223252; border-radius: 8px; padding: 9px 10px; }
-    .card h2 { font-size: 0.73rem; text-transform: uppercase; letter-spacing: 0.7px; color: var(--cyan); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
-
-    .alert { padding: 7px 9px; border-radius: 6px; font-size: 0.76rem; line-height: 1.36; border-left: 4px solid var(--green); background: rgba(16, 185, 129, 0.12); }
-    .alert.warn { border-left-color: var(--amber); background: rgba(245, 158, 11, 0.15); }
-    .alert.danger { border-left-color: var(--red); background: rgba(239, 68, 68, 0.2); }
-
-    table { width: 100%; border-collapse: collapse; font-size: 0.74rem; text-align: left; }
-    th { color: var(--muted); padding-bottom: 4px; border-bottom: 1px solid #223252; }
-    td { padding: 4px 2px; border-bottom: 1px solid #1b2842; }
-    .good { color: var(--green); font-weight: 700; }
-    .bad { color: var(--red); font-weight: 700; }
-
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-    .metric { background: #0a101d; padding: 5px 7px; border-radius: 6px; border: 1px solid #1b2842; }
-    .metric span { display: block; font-size: 0.66rem; color: var(--muted); }
-    .metric strong { font-size: 0.82rem; }
-
-    .bar-wrap { margin-top: 6px; }
-    .bar-lbl { display: flex; justify-content: space-between; font-size: 0.72rem; margin-bottom: 2px; }
-    .bar-bg { width: 100%; height: 6px; background: #060a12; border-radius: 4px; overflow: hidden; }
-    .bar-fill { height: 100%; transition: width 0.25s, background 0.25s; }
-
-    .meta { font-size: 0.75rem; color: #cbd5e1; line-height: 1.36; }
-    .meta p { margin-bottom: 4px; }
-    .meta a { color: var(--cyan); text-decoration: none; }
-    .meta a:hover { text-decoration: underline; }
-    .tag { display: inline-block; background: #1a2742; color: var(--cyan); padding: 2px 6px; border-radius: 4px; font-size: 0.67rem; margin-top: 2px; margin-right: 3px; }
-
-    /* MODAL INSPECTOR DE DATOS */
-    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.82); z-index: 2000; align-items: center; justify-content: center; padding: 14px; }
-    .modal-backdrop.open { display: flex; }
-    .modal { background: var(--panel); border: 1px solid #334155; border-radius: 10px; max-width: 1020px; width: 100%; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
-    .modal-head { padding: 11px 15px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
-    .modal-body { padding: 14px; overflow: auto; font-size: 0.75rem; }
-  </style>
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 12px; width: 12px;
+            border-radius: 2px;
+            background: var(--accent-cyan);
+            border: 1px solid #e0f2fe;
+            cursor: pointer;
+            margin-top: -4px;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px;
+            cursor: pointer;
+            background: rgba(148, 163, 184, 0.25);
+            border-radius: 1px;
+        }
+        #viewport-3d, #viewport-2d {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+        }
+        #labels-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 5;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .iau-label {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            font-family: 'Inter', sans-serif;
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: 0.04em;
+            color: rgba(241, 245, 249, 0.86);
+            text-shadow: 0 1px 3px #000, 0 0 6px #000;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+    </style>
 </head>
 <body>
 
-<header>
-  <div class="brand">
-    <span class="badge">AUDERE</span>
-    <h1>Consola Planetaria Real NASA / USGS</h1>
-    <span id="csvStatus" class="pill">Cargando mosaicos NASA Mars Trek...</span>
-  </div>
+    <!-- Viewports Sincronizados -->
+    <div id="viewport-3d"></div>
+    <canvas id="viewport-2d" class="hidden cursor-crosshair"></canvas>
+    <div id="labels-overlay"></div>
 
-  <div class="view-tabs">
-    <button class="tab-btn active" id="tabGlobe" onclick="switchView('globe')">🌐 Globo 3D Real (NASA/MOLA)</button>
-    <button class="tab-btn" id="tabMap" onclick="switchView('map')">🗺️ Mapa Táctico 2D (A*)</button>
-  </div>
+    <!-- Pantalla de Inicialización -->
+    <div id="loader-overlay" class="fixed inset-0 z-50 bg-[#030508] flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="w-10 h-10 border-2 border-slate-700 border-t-sky-400 rounded-full animate-spin mb-4"></div>
+        <div class="text-[11px] tracking-[0.25em] text-sky-400 font-mono-gis uppercase mb-1">NASA JPL // USGS ASTROGEOLOGY SCIENCE CENTER</div>
+        <h1 class="text-lg font-semibold tracking-wider text-slate-100 uppercase">MARS TREK // TACTICAL SURFACE NAVIGATOR 4D</h1>
+        <p id="loader-status" class="text-xs text-slate-400 mt-2 font-mono-gis">Sintetizando MOLA DEM (-8,200 m a +21,229 m), Viking MDIM2.1 (2048×1024) y matriz radiológica 4D...</p>
+    </div>
 
-  <div class="controls">
-    <select id="csvScenarioSelect" onchange="applyCsvScenario()" title="Condición atmosférica real NASA"></select>
-    <button class="btn-go" onclick="toggleWalk()" id="walkBtn">▶ Caminar EVA</button>
-    <button class="btn-storm" onclick="toggleStormQuick()" id="stormBtn">⚡ Tormenta Global (τ &gt; 3.0)</button>
-    <button onclick="openDataModal()">📊 Tabla Exacta (18 Minerales + Tormentas)</button>
-  </div>
-</header>
+    <!-- BARRA SUPERIOR DE TELEMETRÍA Y CONMUTACIÓN DE PROYECCIÓN -->
+    <header class="fixed top-2 left-2 right-2 z-20 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+        <!-- Identificador Institucional y Lectura Cursor en Vivo -->
+        <div class="gis-panel rounded px-3 py-1.5 flex items-center gap-3 pointer-events-auto">
+            <div class="flex items-center gap-2 pr-3 border-r border-slate-700/70">
+                <div class="w-7 h-7 rounded bg-sky-500/15 border border-sky-400/40 flex items-center justify-center text-sky-400 shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="9" stroke-width="1.75"></circle>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12h18M12 3a14 14 0 010 18 14 14 0 010-18"></path>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="font-semibold text-xs tracking-wider text-white uppercase">MARS TREK <span class="text-sky-400">GIS 4D</span></span>
+                        <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700 font-mono-gis">EPSG:104905</span>
+                    </div>
+                    <div class="text-[9px] text-slate-400 font-mono-gis">MOLA DEM • RADIACIÓN 4D • MINERALES PDS • MEDA τ</div>
+                </div>
+            </div>
 
-<!-- BARRA DE INVESTIGACIÓN DEL ASTRONAUTA -->
-<div class="research-bar">
-  <label>🔬 Objetivo de Investigación:
-    <select id="goalFilterSelect" onchange="filterTargetsByGoal()">
-      <option value="ALL">Todos los hallazgos reales (18 Excel + 2 NASA ISRU)</option>
-      <option value="BIO">🧬 Biofirmas y Vida Antigua (Vivianita, Arcillas, Carbonatos)</option>
-      <option value="WATER">💧 Historia del Agua y Sales (Hematita, Jarosita, Sulfatos, Sílice)</option>
-      <option value="VOLC">🌋 Geología Volcánica y Manto (Olivino, Azufre puro, Tubo de Lava)</option>
-      <option value="ISRU">🧊 Recursos ISRU y Riesgos Tóxicos (Perclorato, Hielo)</option>
-    </select>
-  </label>
-
-  <label>📍 Destino / Yacimiento Exacto:
-    <select id="targetSiteSelect" onchange="selectTargetSite()"></select>
-  </label>
-
-  <span id="coordReadout" style="color:#94a3b8; font-size:0.72rem;"></span>
-</div>
-
-<main>
-  <div class="viewport">
-    <!-- VISTA 1: GLOBO INTERACTIVO 3D CON MOSAICOS REALES NASA MARS TREK & RELIEVE GEOMÉTRICO MOLA -->
-    <div id="globeView">
-      <div id="globeContainer" style="width:100%; height:100%;"></div>
-
-      <div class="layers-hud" id="layerMenu3D">
-        <h3>Capas Reales NASA / USGS (3D = 2D)</h3>
-        <label class="layer-opt selected" data-layer="optical"><input type="radio" name="marsLayer" value="optical" checked onchange="selectPlanetLayer('optical')"> 🛰️ Satélite Real (NASA Viking MDIM21)</label>
-        <label class="layer-opt" data-layer="topo"><input type="radio" name="marsLayer" value="topo" onchange="selectPlanetLayer('topo')"> 🏔️ Topografía Real (USGS MOLA Color)</label>
-        <label class="layer-opt" data-layer="geol"><input type="radio" name="marsLayer" value="geol" onchange="selectPlanetLayer('geol')"> 🪨 Geológica / Minerales (SIM 3464)</label>
-        <label class="layer-opt" data-layer="thermal"><input type="radio" name="marsLayer" value="thermal" onchange="selectPlanetLayer('thermal')"> 🌡️ Térmica Real (USGS THEMIS IR)</label>
-        <label class="layer-opt" data-layer="atmos"><input type="radio" name="marsLayer" value="atmos" onchange="selectPlanetLayer('atmos')"> 🌪️ Atmosférica y Polvo (REMS/MEDA τ)</label>
-        <label class="layer-opt" data-layer="rad"><input type="radio" name="marsLayer" value="rad" onchange="selectPlanetLayer('rad')"> ☢️ Radiación Cósmica (MSL RAD + MOLA)</label>
-        <div class="sep"></div>
-        <label class="layer-opt"><input type="checkbox" id="chkRelief3D" checked onchange="applyReal3DRelief()"> ⛰️ Relieve 3D Real (MOLA DEM 360×180)</label>
-        <div class="slider-row">
-          <span>Escala elevación 3D:</span>
-          <input type="range" id="reliefScaleRange" min="0" max="3" step="0.25" value="1.5" oninput="applyReal3DRelief()" />
-          <strong id="reliefScaleVal" style="color:var(--cyan);">1.5×</strong>
+            <!-- Lectura Geodésica y Física bajo el Cursor -->
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-x-3 gap-y-0.5 text-[10px] font-mono-gis">
+                <div>
+                    <span class="text-slate-500 text-[8px] block uppercase">Lat / Lon (±180°)</span>
+                    <span id="hud-coords" class="text-slate-100">18.4400° N, 77.4400° E</span>
+                </div>
+                <div class="hidden lg:block">
+                    <span class="text-slate-500 text-[8px] block uppercase">Lon Planetocéntrica</span>
+                    <span id="hud-lon360" class="text-slate-300">77.4400° E (0-360)</span>
+                </div>
+                <div>
+                    <span class="text-slate-500 text-[8px] block uppercase">Elevación MOLA</span>
+                    <span id="hud-elev" class="text-sky-300">-2,570 m</span>
+                </div>
+                <div class="hidden sm:block">
+                    <span class="text-slate-500 text-[9px] block uppercase">Pendiente / Temp TES</span>
+                    <span id="hud-slope-temp" class="text-slate-200">3.4° | 212 K (-61°C)</span>
+                </div>
+                <div class="hidden md:block">
+                    <span class="text-slate-500 text-[9px] block uppercase">Rad 4D / Tau</span>
+                    <span id="hud-rad-tau" class="text-amber-300">0.93 mSv/d | τ 0.42</span>
+                </div>
+            </div>
         </div>
-        <label class="layer-opt"><input type="checkbox" id="chkLabels3D" checked onchange="updateGlobeData()"> 🏷️ Nombres de todos los lugares</label>
-        <label class="layer-opt"><input type="checkbox" id="chkAutoRotate" onchange="toggleAutoRotate()"> 🔄 Rotación orbital automática</label>
-        <div class="cam-btns">
-          <button onclick="focusGlobeOnEVA()">🔍 Zoom Ruta EVA</button>
-          <button onclick="focusGlobeGlobal()">🌐 Globo Completo</button>
+
+        <!-- Controles de Vista (Globo 3D, Mapa Plano 2D EPSG:104905 y Relieve Local 3D) -->
+        <div class="gis-panel rounded px-3 py-2 flex items-center gap-2.5 pointer-events-auto">
+            <div class="flex bg-slate-950 p-0.5 rounded border border-slate-800">
+                <button id="btn-mode-globe" onclick="setViewMode('globe')" class="px-2.5 py-1 rounded-sm text-[11px] font-medium bg-sky-500/20 text-sky-300 border border-sky-400/40 transition">
+                    Globo 3D
+                </button>
+                <button id="btn-mode-flat" onclick="setViewMode('flat')" class="px-2.5 py-1 rounded-sm text-[11px] font-medium text-slate-400 hover:text-slate-200 transition">
+                    Mapa Plano 2D
+                </button>
+                <button id="btn-mode-terrain" onclick="setViewMode('terrain')" class="px-2.5 py-1 rounded-sm text-[11px] font-medium text-slate-400 hover:text-slate-200 transition">
+                    Relieve Local 3D
+                </button>
+            </div>
+
+            <!-- Exageración Vertical -->
+            <div class="hidden lg:flex items-center gap-2 pl-2 border-l border-slate-800">
+                <span class="text-[10px] text-slate-400 font-mono-gis uppercase">Exag. DEM:</span>
+                <input id="relief-slider" type="range" min="1.0" max="5.0" step="0.2" value="2.2" class="w-16" oninput="updateReliefScale(this.value)">
+                <span id="relief-val" class="text-[11px] text-sky-300 font-mono-gis w-7">2.2×</span>
+            </div>
+
+            <!-- Etiquetas IAU -->
+            <button id="btn-labels" onclick="toggleIauLabels()" class="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded bg-sky-500/15 border border-sky-400/40 text-[11px] text-sky-200 transition" title="Mostrar/Ocultar Nomenclatura IAU">
+                <span>IAU (25)</span>
+            </button>
+
+            <!-- Curvas de Nivel (Contour Lines) -->
+            <button id="btn-contours" onclick="toggleContours()" class="hidden md:flex items-center gap-1.5 px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[11px] text-slate-300 transition" title="Curvas de Nivel MOLA">
+                <span>Curvas</span>
+            </button>
+
+            <!-- Colapsar Paneles -->
+            <button onclick="togglePanels()" class="p-1.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700 transition" title="Alternar Paneles">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+            </button>
         </div>
-      </div>
+    </header>
 
-      <div class="hud-right">
-        <h3>Globo Real NASA Mars Trek</h3>
-        <p>Misma cartografía satelital y MOLA que el mapa 2D con <strong>geometría 3D desplazada real</strong>. Clic para trazar ruta.</p>
-        <div class="leg"><span class="dot" style="background:#0284c7"></span> <strong>H:</strong> Hábitat | <span class="dot" style="background:#10b981"></span> <strong>OBJ:</strong> Destino</div>
-        <div class="leg"><span class="dot" style="background:#8b5cf6"></span> <strong>REF:</strong> Refugio | <span class="dot" style="background:#06b6d4"></span> <strong>EVA:</strong> Astronauta</div>
-        <div class="leg"><span class="dot" style="background:#f59e0b"></span> Yacimientos Reales (18 Excel)</div>
-        <div class="leg"><span style="color:#ef4444;font-weight:bold;">---</span> Ruta Lineal | <span style="color:#10b981;font-weight:bold;">━━</span> Ruta A* Óptima</div>
-      </div>
+    <!-- Lienzo Interactivo para Mapa Plano 2D Equirectangular (IAU EPSG:104905) -->
+    <div id="flat-map-container" class="fixed inset-0 z-10 hidden bg-[#04060a]">
+        <canvas id="flat-map-canvas" class="w-full h-full cursor-grab active:cursor-grabbing"></canvas>
+        <div class="fixed bottom-12 left-1/2 -translate-x-1/2 gis-panel px-3 py-1 rounded text-[10px] font-mono-gis text-slate-300 pointer-events-none">
+            PROYECCIÓN EQUIRECTANGULAR IAU EPSG:104905 (-180° a +180° LON / -90° a +90° LAT) • RUEDA: ZOOM • ARRASTRAR: PANEO
+        </div>
     </div>
 
-    <!-- VISTA 2: MAPA TÁCTICO LOCAL 2D (LEAFLET + NASA MARS TREK / USGS WMS) -->
-    <div id="mapView">
-      <div id="map" style="width:100%; height:100%;"></div>
-
-      <div class="layers-hud">
-        <h3>Capas Tácticas 2D (NASA / USGS)</h3>
-        <label class="layer-opt selected" data-layer="optical"><input type="radio" name="marsLayer2D" value="optical" checked onchange="selectPlanetLayer('optical')"> 🛰️ Satélite NASA Mars Trek</label>
-        <label class="layer-opt" data-layer="topo"><input type="radio" name="marsLayer2D" value="topo" onchange="selectPlanetLayer('topo')"> 🏔️ Elevación USGS MOLA</label>
-        <label class="layer-opt" data-layer="geol"><input type="radio" name="marsLayer2D" value="geol" onchange="selectPlanetLayer('geol')"> 🪨 Geológica / Minerales (SIM 3464)</label>
-        <label class="layer-opt" data-layer="thermal"><input type="radio" name="marsLayer2D" value="thermal" onchange="selectPlanetLayer('thermal')"> 🌡️ Térmica USGS THEMIS IR</label>
-        <label class="layer-opt" data-layer="atmos"><input type="radio" name="marsLayer2D" value="atmos" onchange="selectPlanetLayer('atmos')"> 🌪️ Atmosférica y Tormentas (τ)</label>
-        <label class="layer-opt" data-layer="rad"><input type="radio" name="marsLayer2D" value="rad" onchange="selectPlanetLayer('rad')"> ☢️ Radiación Cósmica GCR</label>
-        <div class="sep"></div>
-        <label class="layer-opt"><input type="checkbox" id="chkHazards" checked onchange="recalc()"> ⚠️ Celdas de riesgo (Pendiente/Arena)</label>
-        <label class="layer-opt"><input type="checkbox" id="chkFootprints" checked onchange="recalc()"> ⭕ Huella Imagen (~10 km) / Zona</label>
-      </div>
-
-      <div class="hud-right">
-        <h3>Malla Táctica Local (A*)</h3>
-        <p>Haz <strong>clic en el mapa</strong> para reubicar el objetivo; A* evita pendientes &gt;15°, arena suelta y tormentas.</p>
-        <div class="leg"><span class="sq" style="background:#991b1b"></span> Pendiente &gt;15° (Bloqueada)</div>
-        <div class="leg"><span class="sq" style="background:#d97706"></span> Arena suelta (Baja inercia, 1.8x O₂)</div>
-        <div class="leg"><span class="sq" style="background:#7c3aed"></span> Riesgo Perclorato / Radiación</div>
-        <label class="btn" style="display:inline-block; margin-top:6px;">📁 Superponer imagen local<input type="file" accept="image/*" style="display:none" onchange="overlayLocalImage(event)" /></label>
-      </div>
-    </div>
-
-    <!-- BANNER DE ALERTA DINÁMICA POR CAPA -->
-    <div id="layerToast" class="layer-toast">
-      <div id="layerToastText"><strong>🛰️ Capa Satelital Real Activa:</strong> Mosaico NASA Viking MDIM 2.1 (232 m/px) + Relieve MOLA 3D.</div>
-      <span id="layerToastBadge" class="tag">NOMINAL</span>
-    </div>
-
-    <div id="dustOverlay"></div>
-  </div>
-
-  <!-- PANEL LATERAL DERECHO: ALERTAS, RUTAS Y TELEMETRÍA -->
-  <aside>
-    <div class="card">
-      <h2>Alertas de Capa y Copiloto <span id="alertBadge" style="color:#10b981">● NOMINAL</span></h2>
-      <div id="copilotMsg" class="alert">Selecciona cualquier capa o yacimiento mineral para trazar la ruta óptima A* sobre topografía real.</div>
-    </div>
-
-    <div class="card">
-      <h2>Comparativa Física: Lineal vs. Ruta A*</h2>
-      <table>
-        <thead><tr><th>Métrica Real (R=3,389.5 km)</th><th>Lineal</th><th>Óptima (A*)</th></tr></thead>
-        <tbody>
-          <tr><td>Distancia geodésica</td><td id="cmpDistDir">0 m</td><td id="cmpDistSafe" class="good">0 m</td></tr>
-          <tr><td>Tiempo caminata (3.0 km/h)</td><td id="cmpTimeDir">0 min</td><td id="cmpTimeSafe">0 min</td></tr>
-          <tr><td>Consumo Oxígeno (O₂)</td><td id="cmpO2Dir" class="bad">0 g</td><td id="cmpO2Safe" class="good">0 g</td></tr>
-          <tr><td>Zonas de riesgo cruzadas</td><td id="cmpRiskDir" class="bad">0</td><td id="cmpRiskSafe" class="good">0 (Segura)</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="card">
-      <h2>Telemetría Ambiental y Soporte Vital</h2>
-      <div class="grid">
-        <div class="metric"><span>Opacidad Polvo (τ) / Fenómeno</span><strong id="valTau">0.55 (Nominal)</strong></div>
-        <div class="metric"><span>Visibilidad (I = I₀·e⁻ᵟ)</span><strong id="valVis">18,000 m</strong></div>
-        <div class="metric"><span>Temp (K / °C) y Viento</span><strong id="valTemp">265 K (-8°C) | 40 km/h</strong></div>
-        <div class="metric"><span>Dosis Rad. (Blindaje <span id="valShield">65%</span>)</span><strong id="valRadAccum">0.0000 mSv</strong></div>
-      </div>
-      <div class="bar-wrap">
-        <div class="bar-lbl"><span>Tanque Oxígeno (O₂ xEMU)</span><strong id="valO2">540.0 g / 540 g (100%)</strong></div>
-        <div class="bar-bg"><div id="barO2" class="bar-fill" style="width:100%; background:#10b981;"></div></div>
-      </div>
-      <div class="bar-wrap">
-        <div class="bar-lbl"><span>Batería Térmica Traje</span><strong id="valBat">1000 Wh / 1000 Wh (100%)</strong></div>
-        <div class="bar-bg"><div id="barBat" class="bar-fill" style="width:100%; background:#06b6d4;"></div></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Ficha Científica Exacta (NASA / USGS)</h2>
-      <div class="meta" id="missionInfo"></div>
-    </div>
-  </aside>
-</main>
-
-<!-- MODAL CON TODOS LOS DATOS REALES DE MINERALES Y TORMENTAS -->
-<div class="modal-backdrop" id="dataModal">
-  <div class="modal">
-    <div class="modal-head">
-      <strong style="color:var(--cyan);">Base de Datos Científica Exacta (18 Registros Excel NASA/USGS + Tormentas de Polvo)</strong>
-      <button onclick="closeDataModal()">✕ Cerrar</button>
-    </div>
-    <div class="modal-body">
-      <h3 style="color:var(--amber); margin-bottom:6px;">1. Dinámica de Tormentas de Polvo en Marte (Año Marciano = 687 días terrestres)</h3>
-      <table style="margin-bottom:14px;">
-        <thead><tr><th>Fenómeno</th><th>Frecuencia</th><th>Duración</th><th>Viento / Opacidad τ</th><th>Estacionalidad</th></tr></thead>
-        <tbody>
-          <tr><td><strong>Remolinos de polvo (Dust Devils)</strong></td><td>Muy frecuentes (diarios)</td><td>Minutos</td><td>~50–90 km/h | τ ≈ 0.8–1.5</td><td>11:00–15:00 LMST (calentamiento solar)</td></tr>
-          <tr><td><strong>Tormentas locales</strong></td><td>Frecuentes (todo el año)</td><td>Horas a días</td><td>Hasta 75 km/h | τ ≈ 1.5–2.5</td><td>Mayor en primavera/verano hemisferio sur</td></tr>
-          <tr><td><strong>Tormentas regionales</strong></td><td>Anuales (con variaciones)</td><td>Días a semanas</td><td>Hasta 85 km/h | τ ≈ 3.0–5.0</td><td>Primavera y verano del hemisferio sur</td></tr>
-          <tr><td><strong>Tormenta global (ej. 2018-06-13)</strong></td><td>Cada 3 a 5 años marcianos</td><td>Semanas a meses</td><td>Hasta 97 km/h (60 mph) | τ &gt; 3.0 (hasta 8.5)</td><td>Solsticio de verano del hemisferio sur (180–235 K)</td></tr>
-        </tbody>
-      </table>
-
-      <h3 style="color:var(--cyan); margin-bottom:6px;">2. Inventario Exacto de Minerales y Coordenadas (Minerales de Marte zonas, coordenadas y fuentes.xlsx)</h3>
-      <div id="mineralsTableWrap"></div>
-    </div>
-  </div>
-</div>
-
-<script>
-  const MARS_R = 3389500.0, SPEED_MPM = 50.0, MAX_O2 = 540.0, MAX_BAT = 1000.0, GRID_N = 28;
-
-  // =========================================================================
-  // 1. BASE DE DATOS EXACTA EXTRAÍDA DE: Minerales de Marte zonas, coordenadas y fuentes.xlsx
-  // =========================================================================
-  const MINERAL_SITES = [
-  {
-    "id": "EXCEL_1",
-    "source": "EXCEL",
-    "cat": "VOLC",
-    "mineral": "Olivino",
-    "lugar": "Piso de Jezero",
-    "lat": 18.44,
-    "lon": 77.44,
-    "lon360": 77.44,
-    "tipo": "Punto",
-    "elev": -2.5,
-    "rad": 0.65,
-    "shield": 55,
-    "seed": 11,
-    "defCsv": "JEZERO_NOMINAL",
-    "stmCsv": "JEZERO_DUST_DEVIL",
-    "hallazgo": "Grandes reservas de olivino; muestra cómo era el interior del planeta.",
-    "fuenteH": "https://www.jpl.nasa.gov/news/nasas-perseverance-mars-rover-ready-to-roll-for-miles-in-years-ahead/",
-    "fuenteC": "https://pubs.usgs.gov/sim/3464/sim3464_pamphlet.pdf"
-  },
-  {
-    "id": "EXCEL_2",
-    "source": "EXCEL",
-    "cat": "VOLC",
-    "mineral": "Olivino",
-    "lugar": "Nili Fossae",
-    "lat": 20.5,
-    "lon": 78.5,
-    "lon360": 78.5,
-    "tipo": "Imagen",
-    "elev": -2.5,
-    "rad": 0.65,
-    "shield": 55,
-    "seed": 18,
-    "defCsv": "JEZERO_NOMINAL",
-    "stmCsv": "JEZERO_DUST_DEVIL",
-    "hallazgo": "Dunas ricas en olivino sobre depósitos de arcilla.",
-    "fuenteH": "https://science.nasa.gov/photojournal/olivine-phyllosilicates-and-ancient-crater-rims/",
-    "fuenteC": "https://science.nasa.gov/photojournal/olivine-phyllosilicates-and-ancient-crater-rims/"
-  },
-  {
-    "id": "EXCEL_3",
-    "source": "EXCEL",
-    "cat": "BIO",
-    "mineral": "Carbonatos",
-    "lugar": "Piso de Jezero",
-    "lat": 18.33,
-    "lon": 77.73,
-    "lon360": 77.73,
-    "tipo": "Punto",
-    "elev": -2.5,
-    "rad": 0.65,
-    "shield": 55,
-    "seed": 25,
-    "defCsv": "JEZERO_NOMINAL",
-    "stmCsv": "JEZERO_DUST_DEVIL",
-    "hallazgo": "Unidad con olivino y carbonato de magnesio; los carbonatos conservan rastros de vida y de la atmósfera antigua.",
-    "fuenteH": "https://science.nasa.gov/missions/mars-2020-perseverance/reading-the-rocks-the-importance-of-the-margin-carbonate-unit-on-mars",
-    "fuenteC": "https://pubs.usgs.gov/sim/3464/sim3464_pamphlet.pdf"
-  },
-  {
-    "id": "EXCEL_4",
-    "source": "EXCEL",
-    "cat": "BIO",
-    "mineral": "Carbonatos",
-    "lugar": "Cráter Gusev (afloramiento Comanche)",
-    "lat": -14.5692,
-    "lon": 175.4729,
-    "lon360": 175.4729,
-    "tipo": "Zona",
-    "elev": -1.9,
-    "rad": 0.67,
-    "shield": 56,
-    "seed": 32,
-    "defCsv": "GALE_NOMINAL",
-    "stmCsv": "GALE_TORMENTA_REGIONAL",
-    "hallazgo": "Carbonatos de magnesio y hierro; agua de pH casi neutro.",
-    "fuenteH": "https://science.nasa.gov/mission/mars-exploration-rovers-spirit-and-opportunity/science-highlights/",
-    "fuenteC": "https://science.nasa.gov/mission/mer-spirit/"
-  },
-  {
-    "id": "EXCEL_5",
-    "source": "EXCEL",
-    "cat": "BIO",
-    "mineral": "Carbonatos",
-    "lugar": "Cráter Gale (siderita, Monte Sharp)",
-    "lat": -4.59,
-    "lon": 137.44,
-    "lon360": 137.44,
-    "tipo": "Zona",
-    "elev": -4.5,
-    "rad": 0.64,
-    "shield": 65,
-    "seed": 39,
-    "defCsv": "GALE_NOMINAL",
-    "stmCsv": "GALE_TORMENTA_GLOBAL",
-    "hallazgo": "Siderita (carbonato de hierro); pista de adónde fue la atmósfera antigua.",
-    "fuenteH": "https://www.jpl.nasa.gov/news/nasas-curiosity-rover-may-have-solved-mars-missing-carbonate-mystery/",
-    "fuenteC": "https://www.giss.nasa.gov/tools/mars24/help/landers.html"
-  },
-  {
-    "id": "EXCEL_6",
-    "source": "EXCEL",
-    "cat": "BIO",
-    "mineral": "Carbonatos",
-    "lugar": "Vastitas Borealis (sitio de Phoenix)",
-    "lat": 68.22,
-    "lon": -125.75,
-    "lon360": 234.25,
-    "tipo": "Punto",
-    "elev": -4.1,
-    "rad": 0.61,
-    "shield": 52,
-    "seed": 46,
-    "defCsv": "ARCADIA_NIEBLA_MATUTINA",
-    "stmCsv": "GALE_TORMENTA_REGIONAL",
-    "hallazgo": "Carbonato de calcio en el suelo; señal de agua líquida ocasional.",
-    "fuenteH": "https://www.nasa.gov/mission_pages/phoenix/news/phoenix-20081110.html",
-    "fuenteC": "https://science.nasa.gov/mission/mars-phoenix/"
-  },
-  {
-    "id": "EXCEL_7",
-    "source": "EXCEL",
-    "cat": "BIO",
-    "mineral": "Arcillas",
-    "lugar": "Mawrth Vallis",
-    "lat": 25.5,
-    "lon": -19.3,
-    "lon360": 340.7,
-    "tipo": "Imagen",
-    "elev": -2.2,
-    "rad": 0.66,
-    "shield": 60,
-    "seed": 53,
-    "defCsv": "JEZERO_NOMINAL",
-    "stmCsv": "JEZERO_DUST_DEVIL",
-    "hallazgo": "Arcillas de hierro-magnesio y de aluminio; indican agua líquida.",
-    "fuenteH": "https://science.nasa.gov/photojournal/mawrth-vallis-phyllosilicates/",
-    "fuenteC": "https://science.nasa.gov/photojournal/mawrth-vallis-phyllosilicates/"
-  },
-  {
-    "id": "EXCEL_8",
-    "source": "EXCEL",
-    "cat": "BIO",
-    "mineral": "Arcillas",
-    "lugar": "Nili Fossae",
-    "lat": 20.5,
-    "lon": 78.5,
-    "lon360": 78.5,
-    "tipo": "Imagen",
-    "elev": -2.2,
-    "rad": 0.66,
-    "shield": 60,
-    "seed": 60,
-    "defCsv": "JEZERO_NOMINAL",
-    "stmCsv": "JEZERO_DUST_DEVIL",
-    "hallazgo": "Arcillas de hierro-magnesio en colinas bajas.",
-    "fuenteH": "https://science.nasa.gov/photojournal/olivine-phyllosilicates-and-ancient-crater-rims/",
-    "fuenteC": "https://science.nasa.gov/photojournal/olivine-phyllosilicates-and-ancient-crater-rims/"
-  },
-  {
-    "id": "EXCEL_9",
-    "source": "EXCEL",
-    "cat": "BIO",
-    "mineral": "Arcillas",
-    "lugar": "Nili Fossae, fractura",
-    "lat": 21.9,
-    "lon": 78.2,
-    "lon360": 78.2,
-    "tipo": "Imagen",
-    "elev": -2.2,
-    "rad": 0.66,
-    "shield": 60,
-    "seed": 67,
-    "defCsv": "JEZERO_NOMINAL",
-    "stmCsv": "JEZERO_DUST_DEVIL",
-    "hallazgo": "Afloramientos de arcilla junto a una fractura.",
-    "fuenteH": "https://science.nasa.gov/photojournal/phyllosilicate-and-olivine-around-a-fracture-in-nili-fossae/",
-    "fuenteC": "https://science.nasa.gov/photojournal/phyllosilicate-and-olivine-around-a-fracture-in-nili-fossae/"
-  },
-  {
-    "id": "EXCEL_10",
-    "source": "EXCEL",
-    "cat": "BIO",
-    "mineral": "Arcillas",
-    "lugar": "Delta de Jezero",
-    "lat": 18.44463,
-    "lon": 77.45088,
-    "lon360": 77.45088,
-    "tipo": "Zona",
-    "elev": -2.2,
-    "rad": 0.66,
-    "shield": 60,
-    "seed": 74,
-    "defCsv": "JEZERO_NOMINAL",
-    "stmCsv": "JEZERO_DUST_DEVIL",
-    "hallazgo": "Sedimentos de arcilla en el delta, aptos para conservar materia orgánica.",
-    "fuenteH": "https://ntrs.nasa.gov/citations/20220003568",
-    "fuenteC": "https://ntrs.nasa.gov/citations/20210024480"
-  },
-  {
-    "id": "EXCEL_11",
-    "source": "EXCEL",
-    "cat": "WATER",
-    "mineral": "Hematita",
-    "lugar": "Cráter Eagle, Meridiani Planum",
-    "lat": -1.95,
-    "lon": -5.53,
-    "lon360": 354.47,
-    "tipo": "Punto",
-    "elev": -1.4,
-    "rad": 0.69,
-    "shield": 54,
-    "seed": 81,
-    "defCsv": "GALE_NOMINAL",
-    "stmCsv": "GALE_TORMENTA_REGIONAL",
-    "hallazgo": "Esferitas (\"arándanos\") de hematita; se forma con agua.",
-    "fuenteH": "https://science.nasa.gov/resource/meridiani-planum-2/",
-    "fuenteC": "https://science.nasa.gov/resource/rovers-landing-hardware-at-eagle-crater-mars-annotated/?site=insight"
-  },
-  {
-    "id": "EXCEL_12",
-    "source": "EXCEL",
-    "cat": "WATER",
-    "mineral": "Sulfatos (jarosita)",
-    "lugar": "Cráter Eagle, Meridiani Planum",
-    "lat": -1.95,
-    "lon": -5.53,
-    "lon360": 354.47,
-    "tipo": "Punto",
-    "elev": -1.4,
-    "rad": 0.69,
-    "shield": 54,
-    "seed": 88,
-    "defCsv": "GALE_NOMINAL",
-    "stmCsv": "GALE_TORMENTA_REGIONAL",
-    "hallazgo": "Jarosita; prueba de agua, y de que era ácida.",
-    "fuenteH": "https://astrobiology.nasa.gov/news/check-type-evidence-of-water-found-on-mars/",
-    "fuenteC": "https://science.nasa.gov/resource/rovers-landing-hardware-at-eagle-crater-mars-annotated/?site=insight"
-  },
-  {
-    "id": "EXCEL_13",
-    "source": "EXCEL",
-    "cat": "WATER",
-    "mineral": "Sulfatos",
-    "lugar": "Monte Sharp, cráter Gale",
-    "lat": -4.59,
-    "lon": 137.44,
-    "lon360": 137.44,
-    "tipo": "Zona",
-    "elev": -4.5,
-    "rad": 0.64,
-    "shield": 65,
-    "seed": 95,
-    "defCsv": "GALE_NOMINAL",
-    "stmCsv": "GALE_TORMENTA_GLOBAL",
-    "hallazgo": "Capas ricas en sulfatos; sales que deja el agua al evaporarse.",
-    "fuenteH": "https://science.nasa.gov/photojournal/curiositys-route-to-gediz-vallis-channel-rendering/",
-    "fuenteC": "https://www.giss.nasa.gov/tools/mars24/help/landers.html"
-  },
-  {
-    "id": "EXCEL_14",
-    "source": "EXCEL",
-    "cat": "WATER",
-    "mineral": "Sílice",
-    "lugar": "Home Plate, cráter Gusev",
-    "lat": -14.6,
-    "lon": 175.5,
-    "lon360": 175.5,
-    "tipo": "Punto",
-    "elev": -1.9,
-    "rad": 0.67,
-    "shield": 56,
-    "seed": 102,
-    "defCsv": "GALE_NOMINAL",
-    "stmCsv": "GALE_TORMENTA_REGIONAL",
-    "hallazgo": "Suelo con cerca de 90 % de sílice; aguas termales antiguas.",
-    "fuenteH": "https://science.nasa.gov/mission/mars-exploration-rovers-spirit-and-opportunity/science-highlights/",
-    "fuenteC": "https://science.nasa.gov/photojournal/orbital-view-of-spirit-at-troy/"
-  },
-  {
-    "id": "EXCEL_15",
-    "source": "EXCEL",
-    "cat": "WATER",
-    "mineral": "Sílice",
-    "lugar": "Borde de Jezero",
-    "lat": 18.44463,
-    "lon": 77.45088,
-    "lon360": 77.45088,
-    "tipo": "Zona",
-    "elev": -1.9,
-    "rad": 0.67,
-    "shield": 56,
-    "seed": 109,
-    "defCsv": "GALE_NOMINAL",
-    "stmCsv": "GALE_TORMENTA_REGIONAL",
-    "hallazgo": "Sílice en rocas del borde, resto de olivino alterado por agua.",
-    "fuenteH": "https://www.jpl.nasa.gov/news/nasa-discovery-reveals-complex-water-systems-on-early-mars/",
-    "fuenteC": "https://ntrs.nasa.gov/citations/20210024480"
-  },
-  {
-    "id": "EXCEL_16",
-    "source": "EXCEL",
-    "cat": "VOLC",
-    "mineral": "Azufre puro",
-    "lugar": "Canal Gediz Vallis, cráter Gale",
-    "lat": -4.59,
-    "lon": 137.44,
-    "lon360": 137.44,
-    "tipo": "Zona",
-    "elev": -4.5,
-    "rad": 0.64,
-    "shield": 65,
-    "seed": 116,
-    "defCsv": "GALE_NOMINAL",
-    "stmCsv": "GALE_TORMENTA_GLOBAL",
-    "hallazgo": "Cristales de azufre elemental; primero visto en Marte (2024).",
-    "fuenteH": "https://www.jpl.nasa.gov/news/nasas-curiosity-rover-discovers-a-surprise-in-a-martian-rock/",
-    "fuenteC": "https://www.giss.nasa.gov/tools/mars24/help/landers.html"
-  },
-  {
-    "id": "EXCEL_17",
-    "source": "EXCEL",
-    "cat": "BIO",
-    "mineral": "Vivianita y greigita",
-    "lugar": "Roca Cheyava Falls, Jezero",
-    "lat": 18.44463,
-    "lon": 77.45088,
-    "lon360": 77.45088,
-    "tipo": "Zona",
-    "elev": -2.5,
-    "rad": 0.65,
-    "shield": 55,
-    "seed": 123,
-    "defCsv": "JEZERO_NOMINAL",
-    "stmCsv": "JEZERO_DUST_DEVIL",
-    "hallazgo": "Posible biofirma, aún sin confirmar.",
-    "fuenteH": "https://www.jpl.nasa.gov/news/nasa-says-mars-rover-discovered-potential-biosignature-last-year/",
-    "fuenteC": "https://ntrs.nasa.gov/citations/20210024480"
-  },
-  {
-    "id": "EXCEL_18",
-    "source": "EXCEL",
-    "cat": "ISRU",
-    "mineral": "Perclorato",
-    "lugar": "Vastitas Borealis (sitio de Phoenix)",
-    "lat": 68.22,
-    "lon": -125.75,
-    "lon360": 234.25,
-    "tipo": "Punto",
-    "elev": -4.1,
-    "rad": 0.61,
-    "shield": 52,
-    "seed": 130,
-    "defCsv": "ARCADIA_NIEBLA_MATUTINA",
-    "stmCsv": "GALE_TORMENTA_REGIONAL",
-    "hallazgo": "Sales de perclorato sobre hielo de agua; recurso posible y riesgo tóxico.",
-    "fuenteH": "https://www.jpl.nasa.gov/news/nasa-phoenix-results-point-to-martian-climate-cycles/",
-    "fuenteC": "https://science.nasa.gov/mission/mars-phoenix/"
-  },
-  {
-    "id": "NASA_PAVONIS_TUBO",
-    "source": "NASA_REF",
-    "cat": "VOLC",
-    "mineral": "Tubo de Lava Volcánico (Refugio ISRU)",
-    "lugar": "Pavonis Mons, Tharsis",
-    "lat": 0.8,
-    "lon": -113.0,
-    "lon360": 247.0,
-    "tipo": "Punto",
-    "elev": 8.5,
-    "rad": 0.82,
-    "shield": 92,
-    "seed": 149,
-    "defCsv": "PAVONIS_VIENTO_LADERA",
-    "stmCsv": "GALE_TORMENTA_REGIONAL",
-    "hallazgo": "Claraboya de tubo de lava basáltico (HiRISE); ofrece 92% de blindaje natural contra radiación cósmica GCR.",
-    "fuenteH": "https://science.nasa.gov/resource/pavonis-mons-lava-tube/",
-    "fuenteC": "https://planetarynames.wr.usgs.gov/"
-  },
-  {
-    "id": "NASA_ARCADIA_HIELO",
-    "source": "NASA_REF",
-    "cat": "ISRU",
-    "mineral": "Hielo de Agua Somero (<1 m ISRU)",
-    "lugar": "Arcadia Planitia",
-    "lat": 39.2,
-    "lon": -171.0,
-    "lon360": 189.0,
-    "tipo": "Zona",
-    "elev": -3.8,
-    "rad": 0.62,
-    "shield": 50,
-    "seed": 157,
-    "defCsv": "ARCADIA_NIEBLA_MATUTINA",
-    "stmCsv": "GALE_TORMENTA_REGIONAL",
-    "hallazgo": "Depósitos extensos de hielo de agua a <1 m de profundidad; sitio prioritario ISRU para misiones humanas.",
-    "fuenteH": "https://www.jpl.nasa.gov/news/nasa-finds-ice-just-below-the-surface-of-mars/",
-    "fuenteC": "https://pubs.usgs.gov/"
-  }
-];
-
-  // =========================================================================
-  // 2. ESCENARIOS ATMOSFÉRICOS REALES (Datos NASA + Estudio de Tormentas PDF)
-  // =========================================================================
-  const FALLBACK_CSV = `escenario_id,mision_nasa,instrumento,ubicacion,elevacion_km,longitud_solar_ls,ventana_riesgo_lmst,temp_max_c,temp_min_c,presion_pa,opacidad_tau,visibilidad_m,viento_max_ms,viento_ladera_ms,riesgo_electrostatico,estado_alerta
-GALE_NOMINAL,MSL_Curiosity,REMS_Mastcam,Crater_Gale_Mount_Sharp,-4.5,75_Primavera_Norte,12:00-14:30,-8.0,-74.0,745,0.55,18000,8.5,11.0,BAJO,VERDE
-JEZERO_NOMINAL,Mars2020_Perseverance,MEDA,Crater_Jezero_Delta,-2.5,90_Verano_Norte,11:30-15:00,-14.0,-79.0,715,0.48,20000,9.2,7.5,BAJO,VERDE
-ARCADIA_NIEBLA_MATUTINA,MRO_Phoenix_Ref,MCS_MARCI,Arcadia_Planitia_Hielo,-3.8,110_Despejado,04:30-07:00,-48.0,-93.0,820,0.42,1200,11.0,4.0,BAJO,AMARILLO
-PAVONIS_VIENTO_LADERA,MRO_Odyssey_Ref,MCS_THEMIS,Pavonis_Mons_Tharsis,+8.5,120_Despejado,16:00-19:30,-22.0,-88.0,240,0.25,25000,14.5,21.5,MODERADO,AMARILLO
-JEZERO_DUST_DEVIL,Mars2020_Perseverance,MEDA,Remolino_Polvo_Diario,-2.5,215_Primavera_Sur,11:00-15:00,-18.0,-77.0,708,1.35,4500,22.5,9.0,ALTO,AMARILLO
-GALE_TORMENTA_REGIONAL,MRO_MSL_Ref,MARCI_REMS,Tormenta_Regional_Anual,-4.5,230_Verano_Sur,Todo_el_Sol,-38.0,-82.0,780,3.80,650,24.0,16.5,CRITICO,ROJO
-GALE_TORMENTA_GLOBAL,MSL_Curiosity_MRO,Mastcam_MARCI,Tormenta_Global_2018_06_13,-4.4,205_Solsticio_Verano_Sur,Todo_el_Sol,-46.0,-93.0,810,8.50,250,26.9,18.0,CRITICO,ROJO`;
-
-  const NASA_STATIONS = [
-    { name: "Rover Curiosity (MSL)", lat: -4.5895, lng: 137.4417, info: "Cráter Gale | REMS/RAD/ChemCam" },
-    { name: "Rover Perseverance (Mars 2020)", lat: 18.4447, lng: 77.4508, info: "Cráter Jezero | MEDA/SuperCam/SHERLOC" },
-    { name: "Rover Spirit (MER-A)", lat: -14.5692, lng: 175.4729, info: "Cráter Gusev | Comanche & Home Plate" },
-    { name: "Rover Opportunity (MER-B)", lat: -1.9500, lng: -5.5300, info: "Meridiani Planum | Cráter Eagle" },
-    { name: "Aterrizador Phoenix", lat: 68.2200, lng: -125.7500, info: "Vastitas Borealis | Hielo y Percloratos" },
-    { name: "Aterrizador InSight", lat: 4.5024, lng: 135.6234, info: "Elysium Planitia | Sismómetro SEIS & TWINS" }
-  ];
-
-  // Inicia por defecto en Cráter Gale (-4.59000, 137.44000)
-  let scenarios = [], activeScen = null, activeSite = MINERAL_SITES.find(s => s.id === "EXCEL_13") || MINERAL_SITES[0];
-  let habPos = [-4.604, 137.425], shlPos = [-4.597, 137.432], tgtPos = [-4.590, 137.440], stmPos = [-4.595, 137.435];
-  let currentLayerType = 'optical';
-  let o2 = MAX_O2, bat = MAX_BAT, radAcc = 0, walkTimer = null, routePts = [], routeTypes = [], seg = 0, prog = 0;
-  let mapLayers = [], astroMarker = null, localOverlay = null;
-
-  // Caché de texturas reales NASA Mars Trek & USGS WMS (2048x1024) + MOLA DEM real para relieve geométrico 3D
-  const textureCache = {};
-  let realMolaDemCanvas = null, realMolaDemPixels = null, realMolaDemTexture = null;
-  let currentDispScale = 11.25, currentDispBias = -4.7;
-
-  const pRand = s => { const x = Math.sin(s) * 10000; return x - Math.floor(x); };
-  const distM = (a, b) => {
-    const r = d => d * Math.PI / 180, dLat = r(b[0]-a[0]), dLon = r(b[1]-a[1]);
-    return 2 * MARS_R * Math.asin(Math.sqrt(Math.sin(dLat/2)**2 + Math.cos(r(a[0]))*Math.cos(r(b[0]))*Math.sin(dLon/2)**2));
-  };
-
-  // =========================================================================
-  // 3. CARGADOR DE MOSAICOS REALES NASA MARS TREK (WMTS EQ) Y USGS WMS (1:1 CON EL MAPA 2D)
-  // =========================================================================
-  function loadImageCORS(url) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error('Failed: ' + url));
-      img.src = url;
-    });
-  }
-
-  // Ensambla exactamente los mismos tiles EQ de NASA Mars Trek que usa Leaflet en 2D (z=2 => 8x4 = 2048x1024 px)
-  async function stitchNasaTrekEQ(layerId, z = 2) {
-    const cols = Math.pow(2, z + 1); // z=2 -> 8 columnas (-180..+180)
-    const rows = Math.pow(2, z);     // z=2 -> 4 filas (+90..-90)
-    const tileSize = 256;
-    const canvas = document.createElement('canvas');
-    canvas.width = cols * tileSize;
-    canvas.height = rows * tileSize;
-    const ctx = canvas.getContext('2d');
-
-    const tasks = [];
-    let okCount = 0;
-    for (let y = 0; y < rows; y++) {
-      for (let x = 0; x < cols; x++) {
-        const url = `https://trek.nasa.gov/tiles/Mars/EQ/${layerId}/1.0.0/default/default028mm/${z}/${y}/${x}.jpg`;
-        tasks.push(
-          loadImageCORS(url).then(img => {
-            ctx.drawImage(img, x * tileSize, y * tileSize, tileSize, tileSize);
-            okCount++;
-          }).catch(() => {})
-        );
-      }
-    }
-    await Promise.all(tasks);
-    if (okCount === 0) throw new Error('No NASA Trek tiles loaded for ' + layerId);
-    return canvas;
-  }
-
-  // Carga directa equirectangular 2048x1024 desde USGS Astrogeology WMS (idéntico a las capas WMS del mapa 2D)
-  async function fetchUsgsWmsEquirect(wmsLayerName) {
-    const url = `https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map&SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&LAYERS=${wmsLayerName}&STYLES=&SRS=EPSG:4326&BBOX=-180,-90,180,90&WIDTH=2048&HEIGHT=1024&FORMAT=image/jpeg`;
-    const img = await loadImageCORS(url);
-    const canvas = document.createElement('canvas');
-    canvas.width = 2048; canvas.height = 1024;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, 2048, 1024);
-    return canvas;
-  }
-
-  // Carga el Modelo Digital de Elevación REAL MOLA (NASA Mars Trek MOLA DEM / USGS MOLA_gray) para relieve 3D geométrico
-  async function loadRealMolaDEM() {
-    if (realMolaDemTexture) return realMolaDemTexture;
-    let demCanvas = null;
-    try {
-      demCanvas = await stitchNasaTrekEQ('Mars_MGS_MOLA_DEM_mosaic_global_463m', 2);
-    } catch {
-      try {
-        demCanvas = await fetchUsgsWmsEquirect('MOLA_gray');
-      } catch {}
-    }
-
-    if (demCanvas) {
-      realMolaDemCanvas = demCanvas;
-      try {
-        const ctx = demCanvas.getContext('2d');
-        realMolaDemPixels = ctx.getImageData(0, 0, demCanvas.width, demCanvas.height);
-      } catch {}
-      const tex = new THREE.CanvasTexture(demCanvas);
-      tex.wrapS = THREE.RepeatWrapping;
-      tex.wrapT = THREE.ClampToEdgeWrapping;
-      tex.needsUpdate = true;
-      realMolaDemTexture = tex;
-      document.getElementById('csvStatus').textContent = "● NASA Mars Trek + MOLA DEM 3D Real Activo";
-    }
-    return realMolaDemTexture;
-  }
-
-  // Muestra la elevación normalizada real [0..1] desde los píxeles del DEM MOLA para posicionar puntos y rutas sobre el relieve 3D
-  function getMolaNormAt(lat, lon) {
-    if (!realMolaDemPixels) return 0.42;
-    const w = realMolaDemPixels.width, h = realMolaDemPixels.height;
-    const u = Math.max(0, Math.min(0.9999, (lon + 180) / 360));
-    const v = Math.max(0, Math.min(0.9999, (90 - lat) / 180));
-    const px = Math.floor(u * w);
-    const py = Math.floor(v * h);
-    const idx = (py * w + px) * 4;
-    return realMolaDemPixels.data[idx] / 255.0;
-  }
-
-  function getSurfaceAltitude(lat, lon, extraClearance = 0.008) {
-    const enabled = document.getElementById('chkRelief3D') && document.getElementById('chkRelief3D').checked;
-    if (!enabled || !realMolaDemPixels) return extraClearance;
-    const hNorm = getMolaNormAt(lat, lon);
-    // El radio base del globo en Three.js es 100.0; pointAltitude es fracción del radio (0.01 = 1 unidad)
-    const dispUnits = hNorm * currentDispScale + currentDispBias;
-    return Math.max(0.004, (dispUnits / 100.0) + extraClearance);
-  }
-
-  // Construye cada capa del Globo 3D usando las MISMAS imágenes reales NASA/USGS del Mapa 2D
-  async function getRealPlanetLayerTexture(layerType, tauVal) {
-    // 1. Obtener base real NASA Viking (para óptica, atmósfera y radiación) o MOLA Color / THEMIS IR
-    if (!textureCache.optical) {
-      try {
-        textureCache.optical = await stitchNasaTrekEQ('Mars_Viking_MDIM21_ClrMosaic_global_232m', 2);
-      } catch {
-        try { textureCache.optical = await fetchUsgsWmsEquirect('MOLA_color'); } catch {}
-      }
-    }
-
-    if (layerType === 'optical' && textureCache.optical) {
-      return textureCache.optical;
-    }
-
-    if (layerType === 'topo') {
-      if (!textureCache.topo) {
-        try {
-          textureCache.topo = await stitchNasaTrekEQ('Mars_MOLA_blend200ppx_HRSC_ClrShade_clon0dd_200mpp_lzw', 2);
-        } catch {
-          try { textureCache.topo = await fetchUsgsWmsEquirect('MOLA_color'); } catch {}
-        }
-      }
-      if (textureCache.topo) return textureCache.topo;
-    }
-
-    if (layerType === 'thermal') {
-      if (!textureCache.thermal) {
-        try {
-          textureCache.thermal = await fetchUsgsWmsEquirect('THEMIS_IR_day');
-        } catch {
-          try { textureCache.thermal = await stitchNasaTrekEQ('Mars_MOLA_blend200ppx_HRSC_ClrShade_clon0dd_200mpp_lzw', 2); } catch {}
-        }
-      }
-      if (textureCache.thermal) return textureCache.thermal;
-    }
-
-    if (layerType === 'geol') {
-      if (!textureCache.geol) {
-        let base = null;
-        try { base = await fetchUsgsWmsEquirect('MOLA_shaded'); } catch { base = textureCache.topo || textureCache.optical; }
-        if (base) {
-          const c = document.createElement('canvas');
-          c.width = base.width; c.height = base.height;
-          const ctx = c.getContext('2d');
-          ctx.drawImage(base, 0, 0);
-          // Superponer retícula geológica y huellas de teledetección
-          ctx.strokeStyle = 'rgba(6, 182, 212, 0.25)';
-          ctx.lineWidth = 1.5;
-          for (let i = 1; i < 6; i++) { ctx.beginPath(); ctx.moveTo(0, (c.height / 6) * i); ctx.lineTo(c.width, (c.height / 6) * i); ctx.stroke(); }
-          for (let i = 1; i < 12; i++) { ctx.beginPath(); ctx.moveTo((c.width / 12) * i, 0); ctx.lineTo((c.width / 12) * i, c.height); ctx.stroke(); }
-          textureCache.geol = c;
-        }
-      }
-      if (textureCache.geol) return textureCache.geol;
-    }
-
-    if (layerType === 'atmos' && textureCache.optical) {
-      // Compone el mosaico real NASA Viking con la banda real de opacidad óptica Tau (estudio 2018-06-13)
-      const w = textureCache.optical.width, h = textureCache.optical.height;
-      const c = document.createElement('canvas');
-      c.width = w; c.height = h;
-      const ctx = c.getContext('2d');
-      ctx.drawImage(textureCache.optical, 0, 0);
-
-      const overlay = document.createElement('canvas');
-      overlay.width = 512; overlay.height = 256;
-      const octx = overlay.getContext('2d');
-      const img = octx.createImageData(512, 256);
-      for (let y = 0; y < 256; y++) {
-        const lat = 90 - (y / 256) * 180;
-        for (let x = 0; x < 512; x++) {
-          const lon = (x / 512) * 360 - 180;
-          const stormBelt = Math.exp(-Math.pow((lat + 10) / 32, 2)) * (0.62 + 0.38 * Math.sin(lon * 0.055));
-          const dust = Math.min(1, stormBelt * (0.30 + tauVal * 0.14));
-          let r = 20, g = 90, b = 210, a = 95;
-          if (dust < 0.35) { r = 25; g = 110 + dust * 280; b = 210; a = 90; }
-          else if (dust < 0.68) { r = 60 + (dust - 0.35) * 520; g = 205; b = 120 - (dust - 0.35) * 300; a = 120; }
-          else { r = 238; g = 65; b = 28; a = 155; }
-          const idx = (y * 512 + x) * 4;
-          img.data[idx] = r; img.data[idx + 1] = g; img.data[idx + 2] = b; img.data[idx + 3] = a;
-        }
-      }
-      octx.putImageData(img, 0, 0);
-      ctx.drawImage(overlay, 0, 0, w, h);
-      return c;
-    }
-
-    if (layerType === 'rad' && realMolaDemPixels && textureCache.optical) {
-      // Calcula radiación cósmica GCR real según columna atmosférica (elevación MOLA DEM real) sobre mosaico NASA
-      const w = textureCache.optical.width, h = textureCache.optical.height;
-      const c = document.createElement('canvas');
-      c.width = w; c.height = h;
-      const ctx = c.getContext('2d');
-      ctx.drawImage(textureCache.optical, 0, 0);
-
-      const overlay = document.createElement('canvas');
-      overlay.width = 512; overlay.height = 256;
-      const octx = overlay.getContext('2d');
-      const img = octx.createImageData(512, 256);
-      for (let y = 0; y < 256; y++) {
-        const lat = 90 - (y / 256) * 180;
-        for (let x = 0; x < 512; x++) {
-          const lon = (x / 512) * 360 - 180;
-          const elevNorm = getMolaNormAt(lat, lon); // 0 = cuencas profundas (blindadas), 1 = cumbres volcánicas (alta radiación)
-          const r = Math.round(25 + elevNorm * 225);
-          const g = Math.round(195 - elevNorm * 155);
-          const b = Math.round(90 - elevNorm * 65);
-          const idx = (y * 512 + x) * 4;
-          img.data[idx] = r; img.data[idx + 1] = g; img.data[idx + 2] = b; img.data[idx + 3] = 128;
-        }
-      }
-      octx.putImageData(img, 0, 0);
-      ctx.drawImage(overlay, 0, 0, w, h);
-      return c;
-    }
-
-    return textureCache.optical || null;
-  }
-
-  // =========================================================================
-  // 4. GLOBO 3D CON GEOMETRÍA DE ALTA DENSIDAD (360x180) Y RELIEVE FÍSICO REAL MOLA
-  // =========================================================================
-  const globe = Globe()(document.getElementById('globeContainer'))
-    .backgroundColor('#020408')
-    .atmosphereColor('#38bdf8')
-    .atmosphereAltitude(0.15)
-    .pointLat('lat')
-    .pointLng('lng')
-    .pointColor('color')
-    .pointAltitude('alt')
-    .pointRadius('rad')
-    .pointLabel(d => `<div style="background:rgba(13,20,36,0.96);border:1px solid #334155;padding:7px 10px;border-radius:6px;color:#f1f5f9;font-size:12px;max-width:290px;">
-      <strong style="color:#06b6d4;">${d.title}</strong><br><span style="color:#cbd5e1;">${d.desc}</span>
-    </div>`)
-    .pathsData([])
-    .pathPoints('coords')
-    .pathPointLat(p => p[0])
-    .pathPointLng(p => p[1])
-    .pathPointAlt(p => getSurfaceAltitude(p[0], p[1], 0.007))
-    .pathColor(d => d.color)
-    .pathStroke(d => d.stroke)
-    .pathDashLength(d => d.dash || 1)
-    .pathDashGap(d => d.gap || 0)
-    .ringsData([])
-    .ringLat('lat')
-    .ringLng('lng')
-    .ringAltitude(d => getSurfaceAltitude(d.lat, d.lng, 0.006))
-    .ringColor(() => t => `rgba(239, 68, 68, ${1 - t})`)
-    .ringMaxRadius('maxR')
-    .ringPropagationSpeed(2.2)
-    .ringRepeatPeriod(1100)
-    .labelsData([])
-    .labelLat('lat')
-    .labelLng('lng')
-    .labelAltitude(d => getSurfaceAltitude(d.lat, d.lng, 0.011))
-    .labelText('text')
-    .labelSize(d => d.size || 0.85)
-    .labelDotRadius(0.24)
-    .labelColor(d => d.color || '#f8fafc')
-    .labelResolution(2)
-    .onGlobeClick(({ lat, lng }) => {
-      stopWalk();
-      handleCustomPointClick(lat, lng);
-    });
-
-  // Subdividir la esfera 3D a 360x180 (64,800 vértices) para desplazamiento geométrico real MOLA
-  function upgradeGlobeGeometryForRealRelief() {
-    try {
-      globe.scene().traverse(obj => {
-        if (obj.isMesh && obj.geometry && obj.geometry.parameters && obj.geometry.parameters.radius === 100) {
-          if (obj.geometry.parameters.widthSegments < 300) {
-            obj.geometry.dispose();
-            obj.geometry = new THREE.SphereGeometry(100, 360, 180);
-          }
-        }
-      });
-    } catch {}
-  }
-
-  async function applyReal3DRelief() {
-    const enabled = document.getElementById('chkRelief3D').checked;
-    const mult = parseFloat(document.getElementById('reliefScaleRange').value || '1.5');
-    document.getElementById('reliefScaleVal').textContent = enabled ? `${mult.toFixed(2).replace(/\.00$/, '')}×` : '0×';
-
-    upgradeGlobeGeometryForRealRelief();
-    const demTex = await loadRealMolaDEM();
-    const mat = globe.globeMaterial();
-    if (mat && demTex) {
-      currentDispScale = enabled ? (7.5 * mult) : 0;
-      currentDispBias = enabled ? (-3.15 * mult) : 0;
-
-      mat.displacementMap = demTex;
-      mat.displacementScale = currentDispScale;
-      mat.displacementBias = currentDispBias;
-      mat.bumpMap = demTex;
-      mat.bumpScale = enabled ? (2.4 * mult) : 0;
-      mat.roughness = 0.88;
-      mat.metalness = 0.03;
-      mat.needsUpdate = true;
-    }
-    updateGlobeData();
-    updateLayerAlerts(currentLayerType);
-  }
-
-  window.addEventListener('resize', () => {
-    const el = document.getElementById('globeContainer');
-    if (el) { globe.width(el.clientWidth); globe.height(el.clientHeight); }
-  });
-
-  function focusGlobeOnEVA() {
-    const midLat = (habPos[0] + tgtPos[0]) / 2;
-    const midLon = (habPos[1] + tgtPos[1]) / 2;
-    globe.pointOfView({ lat: midLat, lng: midLon, altitude: 0.28 }, 1000);
-  }
-
-  function focusGlobeGlobal() {
-    globe.pointOfView({ lat: activeSite.lat, lng: activeSite.lon, altitude: 1.75 }, 1000);
-  }
-
-  function toggleAutoRotate() {
-    globe.controls().autoRotate = document.getElementById('chkAutoRotate').checked;
-    globe.controls().autoRotateSpeed = 0.65;
-  }
-
-  function switchView(mode) {
-    const isGlobe = mode === 'globe';
-    document.getElementById('tabGlobe').classList.toggle('active', isGlobe);
-    document.getElementById('tabMap').classList.toggle('active', !isGlobe);
-    document.getElementById('globeView').classList.toggle('hidden', !isGlobe);
-    document.getElementById('mapView').classList.toggle('active', !isGlobe);
-    if (!isGlobe) setTimeout(() => map.invalidateSize(), 60);
-  }
-
-  // =========================================================================
-  // 5. MAPA TÁCTICO 2D (LEAFLET + NASA MARS TREK / USGS WMS)
-  // =========================================================================
-  const worldBounds = [[-90, -180], [90, 180]];
-  const map = L.map('map', { crs: L.CRS.EPSG4326, center: [-4.595, 137.435], zoom: 13, minZoom: 2, maxBounds: worldBounds, maxBoundsViscosity: 1.0 });
-
-  const nasaTrekBase = L.tileLayer('https://trek.nasa.gov/tiles/Mars/EQ/Mars_Viking_MDIM21_ClrMosaic_global_232m/1.0.0/default/default028mm/{z}/{y}/{x}.jpg', { maxNativeZoom: 7, maxZoom: 16, noWrap: true, bounds: worldBounds, attribution: 'NASA / JPL Mars Trek' }).addTo(map);
-  const usgsMolaBase = L.tileLayer.wms('https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map', { layers: 'MOLA_color', format: 'image/png', transparent: true, noWrap: true, attribution: 'USGS Astrogeology (MOLA)' });
-  const usgsThemisBase = L.tileLayer.wms('https://planetarymaps.usgs.gov/cgi-bin/mapserv?map=/maps/mars/mars_simp_cyl.map', { layers: 'THEMIS_IR_day', format: 'image/png', transparent: true, noWrap: true, attribution: 'USGS Astrogeology (THEMIS IR)' });
-
-  const pin2D = (c, t) => L.divIcon({ className: '', html: `<div style="background:${c};color:#fff;font-weight:800;font-size:10px;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px #000;">${t}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] });
-  const minPin2D = (c, t) => L.divIcon({ className: '', html: `<div style="background:${c};color:#000;font-weight:800;font-size:9px;padding:1px 5px;border-radius:4px;border:1.5px solid #fff;box-shadow:0 2px 5px #000;white-space:nowrap;">${t}</div>`, iconAnchor: [18, 10] });
-
-  // =========================================================================
-  // 6. CAMBIO DE CAPAS PLANETARIAS (SINCRONIZADO 3D Y 2D CON ALERTAS DINÁMICAS)
-  // =========================================================================
-  async function selectPlanetLayer(layerType) {
-    currentLayerType = layerType;
-
-    // Sincronizar radios en 3D y 2D
-    document.querySelectorAll('input[name="marsLayer"]').forEach(r => r.checked = (r.value === layerType));
-    document.querySelectorAll('input[name="marsLayer2D"]').forEach(r => r.checked = (r.value === layerType));
-    document.querySelectorAll('.layer-opt').forEach(el => {
-      el.classList.toggle('selected', el.getAttribute('data-layer') === layerType);
-    });
-
-    // Aplicar textura real NASA / USGS al Globo 3D
-    const tau = activeScen ? activeScen.tau : 0.55;
-    const realCanvas = await getRealPlanetLayerTexture(layerType, tau);
-    if (realCanvas) {
-      const mat = globe.globeMaterial();
-      if (mat) {
-        const tex = new THREE.CanvasTexture(realCanvas);
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.needsUpdate = true;
-        mat.map = tex;
-        mat.needsUpdate = true;
-      }
-    }
-
-    if (layerType === 'topo') {
-      document.getElementById('chkRelief3D').checked = true;
-      await applyReal3DRelief();
-    }
-
-    // Cambiar capa base en Mapa 2D
-    if (map.hasLayer(usgsMolaBase)) map.removeLayer(usgsMolaBase);
-    if (map.hasLayer(usgsThemisBase)) map.removeLayer(usgsThemisBase);
-    if (layerType === 'topo') usgsMolaBase.addTo(map);
-    else if (layerType === 'thermal') usgsThemisBase.addTo(map);
-
-    updateLayerAlerts(layerType);
-    recalc();
-  }
-
-  function updateLayerAlerts(layerType) {
-    const s = activeScen || scenarios[0];
-    const toast = document.getElementById('layerToast');
-    const toastTxt = document.getElementById('layerToastText');
-    const toastBadge = document.getElementById('layerToastBadge');
-    const badge = document.getElementById('alertBadge');
-    const msg = document.getElementById('copilotMsg');
-
-    const isStorm = s.tau > 2.5;
-    const isToxic = activeSite.id === 'EXCEL_18' || activeSite.mineral.toLowerCase().includes('perclorato');
-    const isCold = s.tempMax < -45;
-
-    let sev = 'nominal', title = '', detail = '';
-
-    if (layerType === 'optical') {
-      sev = isStorm ? 'danger' : (s.tau >= 1.0 ? 'warn' : 'nominal');
-      title = `🛰️ Capa Satelital Real (NASA Viking MDIM 2.1 — 232 m/px)`;
-      detail = `Visibilidad horizontal: <strong>${s.vis.toLocaleString()} m</strong> ($I = I_0 e^{-${s.tau}}$). Coordenada exacta tipo <strong>${activeSite.tipo}</strong> (${activeSite.tipo === 'Imagen' ? 'huella ~10 km' : activeSite.tipo === 'Zona' ? 'área de cráter/rover' : 'punto exacto'}).`;
-    } else if (layerType === 'topo') {
-      const highElev = activeSite.elev > 3.0;
-      sev = highElev ? 'warn' : 'nominal';
-      title = `🏔️ Capa Topográfica y Relieve 3D Real (USGS MOLA DEM)`;
-      detail = `Elevación sitio: <strong>${activeSite.elev > 0 ? '+' : ''}${activeSite.elev} km</strong>. Malla 3D de 64,800 vértices desplazada con datos MOLA reales; pendientes <strong>&gt;15° bloqueadas</strong> en ruta A*.`;
-    } else if (layerType === 'geol') {
-      sev = isToxic ? 'danger' : (activeSite.mineral.toLowerCase().includes('jarosita') ? 'warn' : 'nominal');
-      title = `🪨 Capa Geológica y Mineralógica (USGS SIM 3464 / CRISM)`;
-      detail = isToxic
-        ? `<strong>ALERTA TÓXICA:</strong> Presencia de sales de <strong>Perclorato</strong> en ${activeSite.lugar} (${activeSite.lat}°, ${activeSite.lon}°). Protocolo de descontaminación requerido.`
-        : `Objetivo activo: <strong>${activeSite.mineral}</strong> en ${activeSite.lugar} (${activeSite.lat}°, ${activeSite.lon}° / ${activeSite.lon360}° E).`;
-    } else if (layerType === 'thermal') {
-      const tempK = (s.tempMax + 273.15).toFixed(0);
-      sev = isCold ? 'warn' : 'nominal';
-      title = `🌡️ Capa Térmica Real (USGS Mars Odyssey THEMIS IR)`;
-      detail = isCold
-        ? `<strong>ALERTA TÉRMICA (${tempK} K / ${s.tempMax}°C):</strong> Consumo de batería del traje sube <strong>+40% (196 W)</strong>. Arena suelta (baja inercia térmica) penalizada a 1.8× O₂.`
-        : `Temperatura diurna: <strong>${tempK} K (${s.tempMax} °C)</strong> (rango estacional 180–235 K). Batería térmica nominal (140 W).`;
-    } else if (layerType === 'atmos') {
-      const windKmh = Math.round(s.wind * 3.6);
-      sev = isStorm ? 'danger' : (s.tau >= 1.0 ? 'warn' : 'nominal');
-      title = `🌪️ Capa Atmosférica y Tormentas de Polvo (REMS / MEDA)`;
-      detail = isStorm
-        ? `<strong>ALERTA DE TORMENTA (τ = ${s.tau}):</strong> Vientos de hasta <strong>${windKmh} km/h</strong> (máx. histórico 97 km/h / 60 mph). Mayor frecuencia en primavera/verano hemisferio sur.`
-        : `Opacidad <strong>τ = ${s.tau}</strong> | Viento ladera: <strong>${windKmh} km/h</strong>. Sin tormentas regionales ni globales activas.`;
-    } else if (layerType === 'rad') {
-      const highRad = activeSite.rad > 0.75;
-      sev = highRad ? 'warn' : 'nominal';
-      title = `☢️ Capa de Radiación Cósmica GCR (MSL RAD + Columna MOLA)`;
-      detail = highRad
-        ? `<strong>ALERTA RADIACIÓN EN ALTITUD (${activeSite.rad} mSv/día):</strong> Menor blindaje atmosférico en ${activeSite.lugar}. Refugio cercano ofrece <strong>${activeSite.shield}% de protección</strong>.`
-        : `Tasa ambiental: <strong>${activeSite.rad} mSv/día</strong>. Refugio natural disponible con <strong>${activeSite.shield}% de blindaje</strong>.`;
-    }
-
-    toast.className = `layer-toast ${sev === 'danger' ? 'danger' : (sev === 'warn' ? 'warn' : '')}`;
-    toastTxt.innerHTML = `<strong>${title}:</strong> ${detail}`;
-    toastBadge.textContent = sev === 'danger' ? '▲ ALERTA CRÍTICA' : (sev === 'warn' ? '▲ PRECAUCIÓN' : '● NOMINAL');
-    toastBadge.style.color = sev === 'danger' ? '#ef4444' : (sev === 'warn' ? '#f59e0b' : '#10b981');
-
-    if (isStorm && (s.tau >= 6.0 || (o2 / MAX_O2) * 100 < 45)) {
-      badge.textContent = "▲ EVACUACIÓN A*"; badge.style.color = "#ef4444"; msg.className = "alert danger";
-      msg.innerHTML = `<strong>EVACUACIÓN ACTIVA (τ=${s.tau}):</strong> Ruta A* redirigida al Refugio (${activeSite.shield}% blindaje) evitando frente de polvo y pendientes >15°.`;
-    } else {
-      badge.textContent = sev === 'danger' ? "▲ ALERTA CAPA" : (sev === 'warn' ? "▲ PRECAUCIÓN" : "● RUTA ÓPTIMA A*");
-      badge.style.color = sev === 'danger' ? "#ef4444" : (sev === 'warn' ? "#f59e0b" : "#10b981");
-      msg.className = `alert ${sev === 'danger' ? 'danger' : (sev === 'warn' ? 'warn' : '')}`;
-      msg.innerHTML = `${detail}`;
-    }
-  }
-
-  // =========================================================================
-  // 7. FILTRO POR OBJETIVO DEL ASTRONAUTA Y SELECCIÓN CON COORDENADAS EXACTAS
-  // =========================================================================
-  function filterTargetsByGoal() {
-    const cat = document.getElementById('goalFilterSelect').value;
-    const filtered = cat === 'ALL' ? MINERAL_SITES : MINERAL_SITES.filter(s => s.cat === cat);
-    const sel = document.getElementById('targetSiteSelect');
-    sel.innerHTML = filtered.map(s => {
-      const badge = s.source === 'EXCEL' ? '' : ' [ISRU NASA]';
-      return `<option value="${s.id}">${s.mineral} — ${s.lugar} (${s.lat}°, ${s.lon}°)${badge}</option>`;
-    }).join('');
-    if (filtered.length > 0) {
-      sel.value = filtered[0].id;
-      selectTargetSite();
-    }
-  }
-
-  function selectTargetSite() {
-    stopWalk();
-    const id = document.getElementById('targetSiteSelect').value;
-    activeSite = MINERAL_SITES.find(s => s.id === id) || MINERAL_SITES[0];
-
-    const sIdx = scenarios.findIndex(sc => sc.id === activeSite.defCsv);
-    if (sIdx >= 0) document.getElementById('csvScenarioSelect').value = sIdx;
-
-    // Coordenada EXACTA del Excel/NASA para OBJ y despliegue base EVA a ~1.5 km
-    tgtPos = [activeSite.lat, activeSite.lon];
-    habPos = [activeSite.lat - 0.015, activeSite.lon - 0.016];
-    shlPos = [activeSite.lat - 0.008, activeSite.lon - 0.004];
-    stmPos = [activeSite.lat - 0.006, activeSite.lon - 0.009];
-
-    o2 = MAX_O2; bat = MAX_BAT; radAcc = 0;
-    document.getElementById('valShield').textContent = `${activeSite.shield}%`;
-    document.getElementById('coordReadout').innerHTML = `Exacta: <strong>${activeSite.lat}°</strong>, <strong>${activeSite.lon}°</strong> (${activeSite.lon360}° E NASA)`;
-
-    // Listar también si hay otros minerales co-ubicados en exactamente la misma coordenada del Excel
-    const coLocated = MINERAL_SITES.filter(m => m.id !== activeSite.id && m.lat === activeSite.lat && m.lon === activeSite.lon);
-    const coHtml = coLocated.length > 0
-      ? `<p><strong>Otros hallazgos en esta misma coordenada:</strong> ${coLocated.map(c => c.mineral).join(', ')}</p>`
-      : '';
-
-    document.getElementById('missionInfo').innerHTML = `
-      <p><strong>Yacimiento:</strong> ${activeSite.mineral} — ${activeSite.lugar} <span class="tag">${activeSite.tipo}</span></p>
-      <p><strong>Hallazgo Científico:</strong> ${activeSite.hallazgo}</p>
-      ${coHtml}
-      <p><strong>Coordenadas Exactas:</strong> ${activeSite.lat}°, ${activeSite.lon}° (${activeSite.lon360}° E)</p>
-      <p><strong>Fuentes Oficiales:</strong> <a href="${activeSite.fuenteH}" target="_blank">Hallazgo NASA ↗</a> | <a href="${activeSite.fuenteC}" target="_blank">Coordenada USGS/NASA ↗</a></p>
-    `;
-
-    map.setView([(habPos[0] + tgtPos[0]) / 2, (habPos[1] + tgtPos[1]) / 2], 14);
-    globe.pointOfView({ lat: (habPos[0] + tgtPos[0]) / 2, lng: (habPos[1] + tgtPos[1]) / 2, altitude: 0.42 }, 1100);
-
-    applyCsvScenario();
-  }
-
-  function handleCustomPointClick(lat, lng) {
-    const rLat = Number(lat.toFixed(5)), rLng = Number(lng.toFixed(5));
-    const lon360 = Number((rLng < 0 ? rLng + 360 : rLng).toFixed(5));
-    if (distM(habPos, [rLat, rLng]) < 18000) {
-      tgtPos = [rLat, rLng];
-      activeSite = {
-        ...activeSite,
-        mineral: "Punto Personalizado EVA",
-        lugar: `Coordenada (${rLat}°, ${rLng}°)`,
-        lat: rLat, lon: rLng, lon360,
-        tipo: "Punto",
-        hallazgo: "Objetivo táctico marcado manualmente sobre superficie marciana."
-      };
-    } else {
-      tgtPos = [rLat, rLng];
-      habPos = [rLat - 0.014, rLng - 0.015];
-      shlPos = [rLat - 0.007, rLng - 0.004];
-      stmPos = [rLat - 0.006, rLng - 0.008];
-      activeSite = {
-        id: "CUSTOM_SITE", source: "CUSTOM", cat: "ALL", mineral: "Exploración Orbital",
-        lugar: `Sector (${rLat}°, ${rLng}°)`,
-        lat: rLat, lon: rLng, lon360, tipo: "Punto",
-        elev: -2.0, rad: 0.65, shield: 60, seed: Math.abs(Math.round(rLat * 13 + rLng * 7)) + 5,
-        hallazgo: "Despliegue de exploración en superficie seleccionado desde el globo/mapa.",
-        fuenteH: "https://trek.nasa.gov/mars/", fuenteC: "https://planetarymaps.usgs.gov/"
-      };
-      map.setView([(habPos[0] + tgtPos[0]) / 2, (habPos[1] + tgtPos[1]) / 2], 14);
-    }
-    document.getElementById('coordReadout').innerHTML = `Exacta: <strong>${rLat}°</strong>, <strong>${rLng}°</strong> (${lon360}° E)`;
-    recalc();
-  }
-
-  // =========================================================================
-  // 8. ALGORITMO A* NO LINEAL REAL (EVITA >15°, ARENA, PERCLORATOS Y TORMENTAS)
-  // =========================================================================
-  function computeNonLinearAStar(startPt, goalPt, site, stormActive) {
-    const allLats = [startPt[0], goalPt[0], shlPos[0], stmPos[0]];
-    const allLons = [startPt[1], goalPt[1], shlPos[1], stmPos[1]];
-    const padLat = Math.max(0.005, (Math.max(...allLats) - Math.min(...allLats)) * 0.35);
-    const padLon = Math.max(0.006, (Math.max(...allLons) - Math.min(...allLons)) * 0.35);
-    const minLat = Math.min(...allLats) - padLat, maxLat = Math.max(...allLats) + padLat;
-    const minLon = Math.min(...allLons) - padLon, maxLon = Math.max(...allLons) + padLon;
-    const dLat = (maxLat - minLat) / GRID_N, dLon = (maxLon - minLon) / GRID_N;
-
-    const toCell = pt => ({
-      r: Math.max(0, Math.min(GRID_N - 1, Math.floor((pt[0] - minLat) / dLat))),
-      c: Math.max(0, Math.min(GRID_N - 1, Math.floor((pt[1] - minLon) / dLon)))
-    });
-    const toLatLon = (r, c) => [minLat + (r + 0.5) * dLat, minLon + (c + 0.5) * dLon];
-    const sCell = toCell(startPt), gCell = toCell(goalPt), shlCell = toCell(shlPos);
-
-    const grid = Array.from({ length: GRID_N }, () => Array(GRID_N).fill(0));
-    const showHazards = document.getElementById('chkHazards').checked;
-
-    for (let r = 0; r < GRID_N; r++) {
-      for (let c = 0; c < GRID_N; c++) {
-        const center = toLatLon(r, c);
-        const nearSafe = (Math.abs(r - sCell.r) <= 1 && Math.abs(c - sCell.c) <= 1) ||
-                         (Math.abs(r - gCell.r) <= 1 && Math.abs(c - gCell.c) <= 1) ||
-                         (Math.abs(r - shlCell.r) <= 1 && Math.abs(c - shlCell.c) <= 1);
-        const rnd = pRand(site.seed + r * 37 + c * 13);
-
-        if (!nearSafe && rnd < 0.16) grid[r][c] = 1;
-        else if (!nearSafe && rnd < 0.36) grid[r][c] = 2;
-
-        if (stormActive && distM(center, stmPos) < 480) grid[r][c] = 3;
-
-        if (showHazards && grid[r][c] > 0) {
-          const b = [[minLat + r * dLat, minLon + c * dLon], [minLat + (r + 1) * dLat, minLon + (c + 1) * dLon]];
-          const col = grid[r][c] === 1 ? '#991b1b' : (grid[r][c] === 2 ? '#d97706' : '#7c3aed');
-          const lbl = grid[r][c] === 1 ? 'Pendiente >15° (Bloqueada)' : (grid[r][c] === 2 ? 'Arena suelta (Baja inercia térmica: 1.8x O₂)' : 'Núcleo Tormenta / Riesgo Crítico');
-          mapLayers.push(L.rectangle(b, { color: col, weight: 0.5, fillColor: col, fillOpacity: grid[r][c] === 2 ? 0.24 : 0.44 }).bindPopup(lbl).addTo(map));
-        }
-      }
-    }
-
-    const open = [{ r: sCell.r, c: sCell.c, g: 0, f: 0, p: null }], closed = new Set();
-    let bestNode = open[0];
-    while (open.length) {
-      open.sort((a, b) => a.f - b.f);
-      const cur = open.shift();
-      if (cur.r === gCell.r && cur.c === gCell.c) { bestNode = cur; break; }
-      closed.add(`${cur.r},${cur.c}`);
-
-      for (const [dr, dc] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]) {
-        const nr = cur.r + dr, nc = cur.c + dc;
-        if (nr < 0 || nc < 0 || nr >= GRID_N || nc >= GRID_N || closed.has(`${nr},${nc}`)) continue;
-        if (grid[nr][nc] === 1 || grid[nr][nc] === 3) continue;
-
-        const stepDist = distM(toLatLon(cur.r, cur.c), toLatLon(nr, nc));
-        const terrainPenalty = grid[nr][nc] === 2 ? 1.8 : 1.0;
-        const g = cur.g + stepDist * terrainPenalty;
-        const h = distM(toLatLon(nr, nc), goalPt);
-        const ex = open.find(n => n.r === nr && n.c === nc);
-        if (!ex) open.push({ r: nr, c: nc, g, f: g + h, p: cur });
-        else if (g < ex.g) { ex.g = g; ex.f = g + h; ex.p = cur; }
-      }
-    }
-
-    const pts = [], types = [];
-    let t = bestNode;
-    while (t) { pts.unshift(toLatLon(t.r, t.c)); types.unshift(grid[t.r][t.c]); t = t.p; }
-    pts[0] = startPt;
-    if (pts.length > 1) pts[pts.length - 1] = goalPt;
-
-    let directHazards = 0;
-    for (let i = 1; i <= 18; i++) {
-      const c = toCell([startPt[0] + (goalPt[0] - startPt[0]) * (i / 18), startPt[1] + (goalPt[1] - startPt[1]) * (i / 18)]);
-      if (grid[c.r][c.c] > 0) directHazards++;
-    }
-    return { pts, types, directHazards };
-  }
-
-  // Agrupa los hallazgos que comparten EXACTAMENTE la misma coordenada en el Excel para mostrar etiquetas limpias sin alterar ni un decimal
-  function getGroupedExactLocations() {
-    const groups = new Map();
-    MINERAL_SITES.forEach(ms => {
-      const key = `${ms.lat},${ms.lon}`;
-      if (!groups.has(key)) {
-        groups.set(key, {
-          lat: ms.lat,
-          lon: ms.lon,
-          lon360: ms.lon360,
-          lugar: ms.lugar,
-          tipo: ms.tipo,
-          cat: ms.cat,
-          items: [ms]
-        });
-      } else {
-        groups.get(key).items.push(ms);
-      }
-    });
-    return Array.from(groups.values());
-  }
-
-  function recalc() {
-    const s = activeScen || scenarios[0];
-    const start = astroMarker ? [astroMarker.getLatLng().lat, astroMarker.getLatLng().lng] : habPos;
-    mapLayers.forEach(l => map.removeLayer(l)); mapLayers = [];
-    if (astroMarker) map.removeLayer(astroMarker);
-
-    const showFootprints = document.getElementById('chkFootprints').checked;
-    const groupedSites = getGroupedExactLocations();
-
-    groupedSites.forEach(grp => {
-      const isSelected = grp.items.some(it => it.id === activeSite.id);
-      const mColor = grp.cat === 'BIO' ? '#10b981' : (grp.cat === 'WATER' ? '#38bdf8' : (grp.cat === 'VOLC' ? '#f59e0b' : '#a855f7'));
-      const combinedNames = grp.items.map(it => it.mineral).join(' + ');
-      const popupHtml = grp.items.map(it =>
-        `<b>${it.mineral} — ${it.lugar}</b> (${it.tipo})<br>Coord: ${it.lat}°, ${it.lon}° (${it.lon360}° E)<br>${it.hallazgo}<br><a href="${it.fuenteH}" target="_blank">Fuente NASA ↗</a>`
-      ).join('<hr style="margin:5px 0;border-color:#334155;">');
-
-      if (!isSelected) {
-        mapLayers.push(
-          L.marker([grp.lat, grp.lon], { icon: minPin2D(mColor, combinedNames) })
-           .bindPopup(popupHtml)
-           .addTo(map)
-        );
-      }
-      if (showFootprints && (grp.tipo === 'Imagen' || grp.tipo === 'Zona')) {
-        const radM = grp.tipo === 'Imagen' ? 5000 : 1200;
-        mapLayers.push(
-          L.circle([grp.lat, grp.lon], { radius: radM, color: mColor, weight: 1, dashArray: '4,4', fillColor: mColor, fillOpacity: 0.06, interactive: false }).addTo(map)
-        );
-      }
-    });
-
-    mapLayers.push(
-      L.marker(habPos, { icon: pin2D('#0284c7', 'H') })
-       .bindTooltip('H: Hábitat Base', { permanent: true, direction: 'bottom', className: 'mars-lbl', offset: [0, 12] })
-       .addTo(map)
-    );
-    mapLayers.push(
-      L.marker(tgtPos, { icon: pin2D('#10b981', 'OBJ') })
-       .bindTooltip(`OBJ: ${activeSite.mineral} (${activeSite.lat}°, ${activeSite.lon}°)`, { permanent: true, direction: 'top', className: 'mars-lbl', offset: [0, -12] })
-       .addTo(map)
-    );
-    mapLayers.push(
-      L.marker(shlPos, { icon: pin2D('#8b5cf6', 'REF') })
-       .bindTooltip(`REF: Refugio (${activeSite.shield}%)`, { permanent: true, direction: 'right', className: 'mars-lbl', offset: [12, 0] })
-       .addTo(map)
-    );
-
-    mapLayers.push(L.polyline([start, tgtPos], { color: '#ef4444', weight: 2.2, dashArray: '6,6' }).addTo(map));
-
-    const isStorm = s.tau > 2.5;
-    const evacMode = isStorm && (s.tau >= 6.0 || (o2 / MAX_O2) * 100 < 45);
-    const activeGoal = evacMode ? shlPos : tgtPos;
-    const astar = computeNonLinearAStar(start, activeGoal, activeSite, isStorm);
-    routePts = astar.pts; routeTypes = astar.types;
-
-    mapLayers.push(L.polyline(routePts, { color: evacMode || isStorm ? '#f59e0b' : '#10b981', weight: 4.2 }).addTo(map));
-
-    astroMarker = L.marker(start, { icon: pin2D('#06b6d4', 'EVA') })
-      .bindTooltip('Astronauta EVA', { permanent: true, direction: 'left', className: 'mars-lbl', offset: [-12, 0] })
-      .addTo(map);
-    seg = 0; prog = 0;
-
-    if (isStorm) {
-      mapLayers.push(L.circle(stmPos, { radius: 520, color: '#ef4444', weight: 1.5, dashArray: '4,4', fillColor: '#ef4444', fillOpacity: 0.25 }).addTo(map));
-    }
-
-    const dDir = distM(start, tgtPos), tDir = dDir / SPEED_MPM;
-    let dSafe = 0, o2Safe = 0;
-    for (let i = 1; i < routePts.length; i++) {
-      const segDist = distM(routePts[i - 1], routePts[i]);
-      dSafe += segDist;
-      o2Safe += (segDist / SPEED_MPM) * (routeTypes[i] === 2 ? 2.16 : 1.20);
-    }
-    const tSafe = dSafe / SPEED_MPM;
-
-    document.getElementById('cmpDistDir').textContent = `${Math.round(dDir).toLocaleString()} m`;
-    document.getElementById('cmpTimeDir').textContent = `${tDir.toFixed(1)} min`;
-    document.getElementById('cmpO2Dir').textContent = `${(tDir * 2.05).toFixed(1)} g`;
-    document.getElementById('cmpRiskDir').textContent = `${astar.directHazards} obstáculos`;
-
-    document.getElementById('cmpDistSafe').textContent = `${Math.round(dSafe).toLocaleString()} m`;
-    document.getElementById('cmpTimeSafe').textContent = `${tSafe.toFixed(1)} min`;
-    document.getElementById('cmpO2Safe').textContent = `${o2Safe.toFixed(1)} g`;
-    document.getElementById('cmpRiskSafe').textContent = `0 bloqueos`;
-
-    updateGlobeData();
-    updateHud();
-    updateLayerAlerts(currentLayerType);
-  }
-
-  // =========================================================================
-  // 9. SINCRONIZACIÓN DE ELEMENTOS, NOMBRES Y RUTAS SOBRE EL RELIEVE REAL 3D
-  // =========================================================================
-  function updateGlobeData() {
-    const s = activeScen || scenarios[0];
-    const astroPos = astroMarker ? [astroMarker.getLatLng().lat, astroMarker.getLatLng().lng] : habPos;
-    const groupedSites = getGroupedExactLocations();
-
-    const pts = groupedSites.map(grp => {
-      const isSelected = grp.items.some(it => it.id === activeSite.id);
-      const names = grp.items.map(it => it.mineral).join(' + ');
-      const descs = grp.items.map(it => `• <b>${it.mineral}</b> (${it.tipo}): ${it.hallazgo}`).join('<br>');
-      return {
-        lat: grp.lat,
-        lng: grp.lon,
-        title: `${names} — ${grp.lugar}`,
-        desc: `${descs}<br><small style="color:#38bdf8;">Coord exacta: ${grp.lat}°, ${grp.lon}° (${grp.lon360}° E)</small>`,
-        color: isSelected ? '#10b981' : (grp.cat === 'BIO' ? '#34d399' : (grp.cat === 'WATER' ? '#38bdf8' : (grp.cat === 'VOLC' ? '#fbbf24' : '#c084fc'))),
-        alt: getSurfaceAltitude(grp.lat, grp.lon, isSelected ? 0.025 : 0.015),
-        rad: isSelected ? 0.32 : 0.22
-      };
-    });
-
-    NASA_STATIONS.forEach(st => {
-      pts.push({
-        lat: st.lat, lng: st.lng,
-        title: `📡 ${st.name}`,
-        desc: `${st.info}<br><small>Coord: ${st.lat}°, ${st.lng}°</small>`,
-        color: '#60a5fa',
-        alt: getSurfaceAltitude(st.lat, st.lng, 0.018),
-        rad: 0.22
-      });
-    });
-
-    pts.push({ lat: habPos[0], lng: habPos[1], title: "🏠 H: Hábitat Base", desc: "Soporte vital y esclusa EVA", color: "#0284c7", alt: getSurfaceAltitude(habPos[0], habPos[1], 0.022), rad: 0.28 });
-    pts.push({ lat: shlPos[0], lng: shlPos[1], title: `🛡️ REF: Refugio Natural (${activeSite.shield}%)`, desc: "Protección contra radiación GCR y tormentas", color: "#8b5cf6", alt: getSurfaceAltitude(shlPos[0], shlPos[1], 0.020), rad: 0.25 });
-    pts.push({ lat: astroPos[0], lng: astroPos[1], title: "👨‍🚀 EVA: Astronauta", desc: `O₂: ${o2.toFixed(1)} g | Bat: ${bat.toFixed(0)} Wh`, color: "#06b6d4", alt: getSurfaceAltitude(astroPos[0], astroPos[1], 0.028), rad: 0.26 });
-
-    globe.pointsData(pts);
-
-    const safeCol = s.tau > 2.5 ? '#f59e0b' : '#10b981';
-    globe.pathsData([
-      { coords: [astroPos, tgtPos], color: '#ef4444', stroke: 2.0, dash: 0.4, gap: 0.25 },
-      { coords: routePts, color: safeCol, stroke: 3.6, dash: 1, gap: 0 }
-    ]);
-
-    globe.ringsData([{ lat: stmPos[0], lng: stmPos[1], maxR: s.tau > 2.5 ? 5.5 : 1.8 }]);
-
-    if (document.getElementById('chkLabels3D').checked) {
-      const labels = [
-        { lat: habPos[0], lng: habPos[1], text: "H: HÁBITAT", size: 0.72, color: "#38bdf8" },
-        { lat: tgtPos[0], lng: tgtPos[1], text: `OBJ: ${activeSite.mineral.toUpperCase()}`, size: 0.82, color: "#10b981" },
-        { lat: shlPos[0], lng: shlPos[1], text: "REF: REFUGIO", size: 0.68, color: "#c084fc" },
-        { lat: 18.65, lng: -133.8, text: "OLYMPUS MONS (+21.9 km)", size: 1.0, color: "#f8fafc" },
-        { lat: -13.9, lng: -59.2, text: "VALLES MARINERIS (-7 km)", size: 1.0, color: "#f8fafc" },
-        { lat: 25.5, lng: -19.3, text: "MAWRTH VALLIS (ARCILLAS)", size: 0.8, color: "#fde047" },
-        { lat: -1.95, lng: -5.53, text: "CRÁTER EAGLE (HEMATITA/JAROSITA)", size: 0.8, color: "#fde047" },
-        { lat: 20.5, lng: 78.5, text: "NILI FOSSAE (OLIVINO/ARCILLAS)", size: 0.8, color: "#fde047" },
-        { lat: -14.5692, lng: 175.4729, text: "CRÁTER GUSEV (COMANCHE / SÍLICE)", size: 0.8, color: "#fde047" },
-        { lat: 68.22, lng: -125.75, text: "VASTITAS BOREALIS (PHOENIX / PERCLORATO)", size: 0.8, color: "#fde047" },
-        { lat: 39.2, lng: -171.0, text: "ARCADIA PLANITIA (HIELO ISRU)", size: 0.8, color: "#fde047" },
-        { lat: 0.8, lng: -113.0, text: "PAVONIS MONS (TUBO DE LAVA)", size: 0.8, color: "#fde047" }
-      ];
-      globe.labelsData(labels);
-    } else {
-      globe.labelsData([]);
-    }
-  }
-
-  // =========================================================================
-  // 10. TELEMETRÍA, SIMULACIÓN DE CAMINATA Y ESCENARIOS ATMOSFÉRICOS
-  // =========================================================================
-  async function applyCsvScenario() {
-    activeScen = scenarios[parseInt(document.getElementById('csvScenarioSelect').value, 10) || 0];
-    const isStorm = activeScen.tau > 2.5;
-    document.getElementById('stormBtn').classList.toggle('active', isStorm);
-
-    globe.atmosphereColor(isStorm ? '#ef4444' : (activeScen.tau >= 1.0 ? '#f59e0b' : '#38bdf8'));
-    globe.atmosphereAltitude(isStorm ? 0.22 : 0.15);
-    document.getElementById('dustOverlay').style.opacity = activeScen.tau <= 1 ? "0" : Math.min(0.80, 1 - Math.exp(-activeScen.tau * 0.20)).toFixed(2);
-
-    if (currentLayerType === 'atmos' || currentLayerType === 'thermal') {
-      const realCanvas = await getRealPlanetLayerTexture(currentLayerType, activeScen.tau);
-      if (realCanvas && globe.globeMaterial()) {
-        const tex = new THREE.CanvasTexture(realCanvas);
-        tex.colorSpace = THREE.SRGBColorSpace;
-        tex.needsUpdate = true;
-        globe.globeMaterial().map = tex;
-        globe.globeMaterial().needsUpdate = true;
-      }
-    }
-    recalc();
-  }
-
-  function toggleStormQuick() {
-    const targetId = (activeScen && activeScen.tau > 2.5) ? activeSite.defCsv : activeSite.stmCsv;
-    const idx = scenarios.findIndex(s => s.id === targetId);
-    if (idx >= 0) { document.getElementById('csvScenarioSelect').value = idx; applyCsvScenario(); }
-  }
-
-  function updateHud() {
-    const s = activeScen || scenarios[0];
-    const tempK = (s.tempMax + 273.15).toFixed(0);
-    const windKmh = Math.round(s.wind * 3.6);
-    document.getElementById('valTau').textContent = `${s.tau} (${s.alerta})`;
-    document.getElementById('valVis').textContent = `${s.vis.toLocaleString()} m`;
-    document.getElementById('valTemp').textContent = `${tempK} K (${s.tempMax}°C) | ${windKmh} km/h`;
-    document.getElementById('valRadAccum').textContent = `${radAcc.toFixed(4)} mSv`;
-
-    const o2p = Math.max(0, (o2 / MAX_O2) * 100), bp = Math.max(0, (bat / MAX_BAT) * 100);
-    document.getElementById('valO2').textContent = `${Math.max(0, o2).toFixed(1)} g / 540 g (${o2p.toFixed(0)}%)`;
-    document.getElementById('barO2').style.width = `${o2p}%`;
-    document.getElementById('barO2').style.background = o2p < 35 ? '#ef4444' : '#10b981';
-    document.getElementById('valBat').textContent = `${Math.max(0, bat).toFixed(0)} Wh / 1000 Wh (${bp.toFixed(0)}%)`;
-    document.getElementById('barBat').style.width = `${bp}%`;
-  }
-
-  function toggleWalk() {
-    if (walkTimer) { stopWalk(); return; }
-    document.getElementById('walkBtn').textContent = "⏸ Pausar EVA";
-    walkTimer = setInterval(() => {
-      if (seg >= routePts.length - 1) { stopWalk(); return; }
-      const p1 = routePts[seg], p2 = routePts[seg + 1], d = distM(p1, p2), step = 30;
-      prog += d > 0 ? step / d : 1;
-      if (prog >= 1) { prog = 0; seg++; astroMarker.setLatLng(routePts[seg]); }
-      else astroMarker.setLatLng([p1[0] + (p2[0] - p1[0]) * prog, p1[1] + (p2[1] - p1[1]) * prog]);
-
-      const mins = step / SPEED_MPM;
-      o2 -= mins * (routeTypes[seg] === 2 ? 2.16 : 1.20);
-      bat -= ((activeScen.tempMax < -45) ? 196 : 140) * (mins / 60);
-      radAcc += (activeSite.rad / 24) * (mins / 60);
-      updateHud();
-      updateGlobeData();
-    }, 280);
-  }
-
-  function stopWalk() { clearInterval(walkTimer); walkTimer = null; document.getElementById('walkBtn').textContent = "▶ Caminar EVA"; }
-
-  map.on('click', e => { stopWalk(); handleCustomPointClick(e.latlng.lat, e.latlng.lng); });
-
-  function overlayLocalImage(e) {
-    const f = e.target.files[0]; if (!f) return;
-    const r = new FileReader();
-    r.onload = ev => {
-      if (localOverlay) map.removeLayer(localOverlay);
-      localOverlay = L.imageOverlay(ev.target.result, map.getBounds(), { opacity: 0.85 }).addTo(map);
-    };
-    r.readAsDataURL(f);
-  }
-
-  function openDataModal() {
-    let html = '<table><thead><tr><th>#</th><th>Mineral</th><th>Lugar</th><th>Lat / Lon (-180..180)</th><th>Lon Este (0..360 NASA)</th><th>Tipo</th><th>Hallazgo Científico</th><th>Fuentes</th></tr></thead><tbody>';
-    MINERAL_SITES.forEach((m, i) => {
-      html += `<tr><td>${i + 1}</td><td><strong>${m.mineral}</strong></td><td>${m.lugar}</td><td>${m.lat}°, ${m.lon}°</td><td>${m.lon360}° E</td><td>${m.tipo}</td><td>${m.hallazgo}</td><td><a href="${m.fuenteH}" target="_blank" style="color:#06b6d4;">NASA ↗</a></td></tr>`;
-    });
-    html += '</tbody></table>';
-    document.getElementById('mineralsTableWrap').innerHTML = html;
-    document.getElementById('dataModal').classList.add('open');
-  }
-  function closeDataModal() { document.getElementById('dataModal').classList.remove('open'); }
-
-  async function init() {
-    let txt = FALLBACK_CSV;
-    try {
-      const res = await fetch('Data/Atmosfericos/nasa_mars_atmosferico.csv');
-      if (res.ok) txt = await res.text();
-    } catch {}
-
-    scenarios = txt.trim().split('\n').slice(1).map(l => {
-      const c = l.split(',');
-      return {
-        id: c[0], mision: c[1], instrumento: c[2], ubicacion: c[3],
-        tempMax: parseFloat(c[7]), tau: parseFloat(c[10]), vis: parseInt(c[11], 10),
-        wind: parseFloat(c[13]), alerta: (c[15] || '').trim()
-      };
-    });
-    document.getElementById('csvScenarioSelect').innerHTML = scenarios.map((s, i) => `<option value="${i}">${s.id} (τ=${s.tau})</option>`).join('');
-
-    filterTargetsByGoal();
-    document.getElementById('targetSiteSelect').value = "EXCEL_13";
-    selectTargetSite();
-
-    // Cargar mosaico satelital real NASA Mars Trek + relieve geométrico real MOLA DEM
-    await selectPlanetLayer('optical');
-    await applyReal3DRelief();
-  }
-
-  init();
-</script>
-</body>
-</html>
+    <!-- Contenedor de Etiquetas Flotantes IAU en 3D -->
+    <div id="iau-labels-layer" class="fixed inset-0 z-10 pointer-events-none overflow-hidden"></div>
+
+    <!-- PANEL IZQUIERDO: PLANIFICADOR DE RUTAS TÁCTICAS Y TELEMETRÍA 4D -->
+    <aside id="left-panel" class="fixed top-14 bottom-11 left-2 w-[332px] max-w-[calc(100vw-16px)] z-20 flex flex-col gap-2 pointer-events-none transition-transform duration-300">
+        <!-- 1. Planificador de Ruta Superficial (Waze Marciano) -->
+        <div class="gis-panel rounded p-2.5 pointer-events-auto flex flex-col gap-2">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-1">
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+                    <h2 class="font-semibold text-[11px] tracking-wider uppercase text-slate-100">Planificador Ruta Táctica A*</h2>
+                </div>
+                <span class="text-[9px] font-mono-gis text-sky-400">R_MARTE = 3,389.5 km</span>
+            </div>
+
+            <!-- Rutas Predefinidas NASA -->
+            <select id="select-preset-route" onchange="applyPresetRoute(this.value)" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[10px] text-sky-300 focus:outline-none">
+                <option value="curiosity_sharp">Ruta MSL: Bradbury Landing → Monte Sharp (Gale)</option>
+                <option value="perseverance_delta">Ruta Mars 2020: Butler Landing → Delta Jezero</option>
+                <option value="valles_traverse">Travesía Tectónica: Valles Marineris → Meridiani</option>
+                <option value="olympus_ascent">Ascenso Extremo: Amazonis → Olympus Mons</option>
+                <option value="custom">Ruta Personalizada (Waypoints A / B)</option>
+            </select>
+
+            <!-- Selector de Origen (A) y Destino (B) -->
+            <div class="space-y-1">
+                <div class="flex items-center gap-1.5">
+                    <span class="w-5 h-5 rounded-sm bg-sky-500/20 border border-sky-400/60 text-sky-300 font-mono-gis text-[10px] font-bold flex items-center justify-center shrink-0">A</span>
+                    <select id="select-origin" onchange="onSelectMissionChange()" class="w-full bg-slate-900 border border-slate-700/90 rounded px-2 py-1 text-[11px] text-slate-100 focus:outline-none focus:border-sky-400"></select>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-5 h-5 rounded-sm bg-amber-500/20 border border-amber-400/60 text-amber-300 font-mono-gis text-[10px] font-bold flex items-center justify-center shrink-0">B</span>
+                    <select id="select-dest" onchange="onSelectMissionChange()" class="w-full bg-slate-900 border border-slate-700/90 rounded px-2 py-1 text-[11px] text-slate-100 focus:outline-none focus:border-amber-400"></select>
+                </div>
+            </div>
+
+            <!-- Herramientas de Clic en Mapa + Modo de Transporte -->
+            <div class="grid grid-cols-2 gap-1.5">
+                <button id="btn-click-pin" onclick="toggleMapClickMode()" class="px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-slate-700 text-[10px] text-slate-200 flex items-center justify-center gap-1 transition">
+                    <svg class="w-3 h-3 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2v4m0 12v4M2 12h4m12 0h4m-10-4a4 4 0 100 8 4 4 0 000-8z"/></svg>
+                    <span id="click-pin-label">Marcar A/B en Mapa</span>
+                </button>
+                <select id="select-vehicle" onchange="recalculateRoute()" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[10px] text-slate-200 focus:outline-none">
+                    <option value="rover">Rover Presurizado (12.0 km/h)</option>
+                    <option value="eva">Caminata EVA (3.5 km/h)</option>
+                </select>
+            </div>
+
+            <!-- Criterio Multi-Objetivo -->
+            <div class="grid grid-cols-3 gap-1 bg-slate-950 p-1 rounded border border-slate-800 text-[10px]">
+                <button id="prio-safe" onclick="setRoutePriority('safe')" class="py-1 rounded-sm bg-sky-500/20 text-sky-300 border border-sky-400/40 font-medium">Seguridad Máx.</button>
+                <button id="prio-balanced" onclick="setRoutePriority('balanced')" class="py-1 rounded-sm text-slate-400 hover:text-slate-200">Equilibrada</button>
+                <button id="prio-fast" onclick="setRoutePriority('fast')" class="py-1 rounded-sm text-slate-400 hover:text-slate-200">Directa</button>
+            </div>
+
+            <!-- Alerta de Toxicidad por Perclorato -->
+            <div id="perchlorate-alert" class="hidden rounded bg-rose-500/15 border border-rose-500/40 px-2 py-1 text-[9px] font-mono-gis text-rose-200">
+                ⚠ ALERTA QUÍMICA: Proximidad a depósitos de perclorato tóxico (Vastitas Borealis). Protocolo de descontaminación requerido.
+            </div>
+        </div>
+
+        <!-- 2. Telemetría Real + Modelo Radiológico 4D (MATLAB) -->
+        <div class="gis-panel rounded p-2.5 pointer-events-auto flex-1 overflow-y-auto flex flex-col gap-2">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-1">
+                <span class="text-[10px] font-semibold tracking-wider uppercase text-slate-200">Telemetría Física y Radiación 4D</span>
+                <span id="safety-badge" class="text-[9px] font-mono-gis font-semibold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">SEGURIDAD: 95%</span>
+            </div>
+
+            <!-- Matriz de 8 Parámetros Reales -->
+            <div class="grid grid-cols-4 gap-1 font-mono-gis">
+                <div class="gis-subcard rounded p-1.5">
+                    <div class="text-[8px] text-slate-400 uppercase">Dist. 3D</div>
+                    <div id="stat-dist" class="text-[11px] font-semibold text-white">-- km</div>
+                </div>
+                <div class="gis-subcard rounded p-1.5">
+                    <div class="text-[8px] text-slate-400 uppercase">Tiempo</div>
+                    <div id="stat-time" class="text-[11px] font-semibold text-sky-300">-- h</div>
+                </div>
+                <div class="gis-subcard rounded p-1.5">
+                    <div class="text-[8px] text-slate-400 uppercase">Pend. Máx</div>
+                    <div id="stat-slope" class="text-[11px] font-semibold text-amber-300">--°</div>
+                </div>
+                <div class="gis-subcard rounded p-1.5">
+                    <div class="text-[8px] text-slate-400 uppercase">Dosis 4D</div>
+                    <div id="stat-rad" class="text-[11px] font-semibold text-rose-300">-- mSv</div>
+                </div>
+                <div class="gis-subcard rounded p-1.5">
+                    <div class="text-[8px] text-slate-400 uppercase">Oxígeno O₂</div>
+                    <div id="stat-o2" class="text-[11px] font-semibold text-emerald-300">-- kg</div>
+                </div>
+                <div class="gis-subcard rounded p-1.5">
+                    <div class="text-[8px] text-slate-400 uppercase">Energía</div>
+                    <div id="stat-energy" class="text-[11px] font-semibold text-slate-100">-- kWh</div>
+                </div>
+                <div class="gis-subcard rounded p-1.5">
+                    <div class="text-[8px] text-slate-400 uppercase">Tau Prom.</div>
+                    <div id="stat-tau" class="text-[11px] font-semibold text-amber-200">--</div>
+                </div>
+                <div class="gis-subcard rounded p-1.5">
+                    <div class="text-[8px] text-slate-400 uppercase">Solar I(τ)</div>
+                    <div id="stat-solar" class="text-[11px] font-semibold text-sky-200">-- W/m²</div>
+                </div>
+            </div>
+
+            <!-- Modelo Radiológico 4D MATLAB: dDosis = Tasa(x,y) * f(t) * dt -->
+            <div class="gis-subcard rounded p-2 flex flex-col gap-1.5">
+                <div class="flex items-center justify-between">
+                    <span class="text-[9px] font-mono-gis font-semibold text-sky-300 uppercase">Modelo Radiológico 4D (MATLAB SPE)</span>
+                    <button onclick="openMatlabModal()" class="px-1.5 py-0.5 rounded bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 text-[9px] font-mono-gis text-sky-200 transition">
+                        Validar Matriz MATLAB 5×5
+                    </button>
+                </div>
+                <div class="text-[9px] font-mono-gis text-slate-400">
+                    Tasa(x,y) = 0.65 + (elev - (-8200)) × 0.05 / 1000
+                </div>
+                <div class="flex items-center justify-between gap-2 text-[10px] font-mono-gis">
+                    <span class="text-slate-300">Perfil f(t) SPE:</span>
+                    <input id="spe-profile-input" type="text" value="1.0, 1.0, 4.2, 1.1, 1.0" onchange="recalculateRoute()" class="w-36 bg-slate-950 border border-slate-700 rounded px-1.5 py-0.5 text-[10px] text-amber-300 text-right focus:outline-none focus:border-sky-400">
+                </div>
+            </div>
+
+            <!-- Perfil Topográfico MOLA en Canvas -->
+            <div class="gis-subcard rounded p-2">
+                <div class="flex items-center justify-between text-[9px] font-mono-gis text-slate-400 mb-1">
+                    <span>PERFIL ALTIMÉTRICO MOLA (m)</span>
+                    <span id="stat-gain" class="text-sky-300">+0 m / -0 m</span>
+                </div>
+                <canvas id="elevation-chart" class="w-full h-20 rounded-sm bg-slate-950/90 border border-slate-800/80"></canvas>
+            </div>
+
+            <!-- Navegación Giro a Giro -->
+            <div class="flex flex-col gap-1">
+                <div class="text-[9px] font-mono-gis text-slate-400 uppercase tracking-wider">Navegación Giro a Giro (Waypoints)</div>
+                <div id="turn-by-turn-list" class="space-y-1 text-[10px]"></div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- PANEL DERECHO: CAPAS GIS, CLIMATOLOGÍA MEDA Y CATÁLOGO DE 18 MINERALES NASA/USGS -->
+    <aside id="right-panel" class="fixed top-14 bottom-11 right-2 w-[332px] max-w-[calc(100vw-16px)] z-20 flex flex-col gap-2 pointer-events-none transition-transform duration-300">
+        
+        <!-- 1. Capas Temáticas GIS + Control Estacional Climatológico -->
+        <div class="gis-panel rounded p-2.5 pointer-events-auto flex flex-col gap-2">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-1">
+                <h2 class="font-semibold text-[11px] tracking-wider uppercase text-slate-100">Capas Temáticas GIS (6)</h2>
+                <span class="text-[9px] font-mono-gis text-slate-400">SINCRONIZADO 2D/3D</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-1 text-[10px]">
+                <button onclick="setMapLayer('visual')" id="layer-visual" class="layer-btn flex items-center justify-between px-2 py-1.5 rounded bg-sky-500/15 border border-sky-400/40 text-white font-medium transition">
+                    <span>Óptica Viking</span>
+                    <span class="text-[8px] font-mono-gis text-sky-300">MDIM</span>
+                </button>
+                <button onclick="setMapLayer('elevation')" id="layer-elevation" class="layer-btn flex items-center justify-between px-2 py-1.5 rounded bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 transition">
+                    <span>Altimetría MOLA</span>
+                    <span class="text-[8px] font-mono-gis text-slate-500">m</span>
+                </button>
+                <button onclick="setMapLayer('radiation')" id="layer-radiation" class="layer-btn flex items-center justify-between px-2 py-1.5 rounded bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 transition">
+                    <span>Radiación 4D</span>
+                    <span class="text-[8px] font-mono-gis text-slate-500">mSv/d</span>
+                </button>
+                <button onclick="setMapLayer('weather')" id="layer-weather" class="layer-btn flex items-center justify-between px-2 py-1.5 rounded bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 transition">
+                    <span>Tormentas Polvo</span>
+                    <span class="text-[8px] font-mono-gis text-slate-500">τ 0-3.8</span>
+                </button>
+                <button onclick="setMapLayer('temperature')" id="layer-temperature" class="layer-btn flex items-center justify-between px-2 py-1.5 rounded bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 transition">
+                    <span>Temp. TES</span>
+                    <span class="text-[8px] font-mono-gis text-slate-500">180-235K</span>
+                </button>
+                <button onclick="setMapLayer('hazards')" id="layer-hazards" class="layer-btn flex items-center justify-between px-2 py-1.5 rounded bg-slate-900/80 hover:bg-slate-800 border border-slate-800 text-slate-300 transition">
+                    <span>Riesgo/Pendiente</span>
+                    <span class="text-[8px] font-mono-gis text-slate-500">DEG °</span>
+                </button>
+            </div>
+
+            <!-- Control Estacional de Tormentas de Polvo (Año Marciano 687 días) -->
+            <div class="gis-subcard rounded p-2 flex flex-col gap-1">
+                <div class="flex items-center justify-between text-[9px] font-mono-gis">
+                    <span class="text-slate-400 uppercase">Estación Marciana (687 d):</span>
+                    <span id="weather-wind-badge" class="text-amber-300">Viento máx: 42 km/h</span>
+                </div>
+                <select id="select-season" onchange="onSeasonChange(this.value)" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 text-[10px] text-slate-200 focus:outline-none focus:border-sky-400">
+                    <option value="n_spring">Primavera Hemisferio Norte (Actividad Polvo Menor)</option>
+                    <option value="n_summer">Verano Hemisferio Norte (Actividad Polvo Menor)</option>
+                    <option value="s_spring">Primavera Hemisferio Sur (Aumento Considerable)</option>
+                    <option value="s_summer">Verano Hemisferio Sur (Tormentas Regionales)</option>
+                    <option value="global_2018" selected>Tormenta Global 2018-06-13 (τ hasta 3.8 | 97 km/h)</option>
+                </select>
+            </div>
+
+            <!-- Escala Calibrada de Capa Activa -->
+            <div>
+                <div class="flex justify-between text-[8px] font-mono-gis text-slate-400 mb-0.5">
+                    <span id="legend-min">Basalto / Carbón</span>
+                    <span id="legend-mid" class="hidden">Terracota / Ocre</span>
+                    <span id="legend-max">Escarcha / Polos</span>
+                </div>
+                <div id="legend-bar" class="h-1.5 w-full rounded-sm" style="background: linear-gradient(to right, #443e42 0%, #5c5250 22%, #a8684c 52%,
